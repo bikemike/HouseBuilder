@@ -1,3 +1,6 @@
+# Copyright (C) 2014 Mike Morrison
+# See LICENSE for details.
+
 # Copyright 2005 Steve Hurlbut
 
 # Permission to use, copy, modify, and distribute this software for 
@@ -70,6 +73,7 @@ def display_global_options_dialog()
 	    [ "Wall Lumber Size", "wall.style", "2x4|2x6|2x8" ],
 	    [ "Wall Plate Height", "wall.height", nil ],
 	    [ "Wall Stud Spacing", "wall.stud_spacing", nil ],
+		[ "On-Center Stud Spacing", "wall.on_center_spacing", "true|false"],
 	    [ "Wall Justification  ", "window.justify",  "left|center|right" ],
 	    [ "Window Justification  ", "window.justify",  "left|center|right" ],
 	    [ "Door Justification  ", "door.justify",  "left|center|right" ],
@@ -77,7 +81,9 @@ def display_global_options_dialog()
 	    [ "Header Size", "header_style", "2x4|2x6|4x4|4x6|4x8|4x10|4x12|4x14|6x6|6x8|6x10|8x6|8x8|8x10" ],
 	    [ "Roof Pitch (x/12)  ", "pitch",  nil ],
 	    [ "Roof Joist Spacing", 'roof.joist_spacing', nil ],
+		[ "On-Center Roof Joist Spacing", "roof.on_center_spacing", "true|false"],
 	 	[ "Floor Joist Spacing", 'floor.joist_spacing', nil ],
+		[ "On-Center Floor Joist Spacing", "floor.on_center_spacing", "true|false"],
 	   ]
     prompts = []
     attr_names = []
@@ -182,6 +188,7 @@ PROPERTIES = [
     [ "Header Height", "header_height", nil ],
     [ "Length", "length", nil ],
     [ "Stud Spacing", "stud_spacing", nil ],
+	[ "On-Center Spacing", "on_center_spacing", "true|false"],
     [ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
     [ "Top Plate Count", "top_plate_count", "0|1|2" ],
    ].freeze
@@ -247,6 +254,8 @@ end
 
 # create a wall in the drawing
 def draw_wall
+	model = Sketchup.active_model
+	model.start_operation "Create Wall"
     new_wall = @wall.clone
     new_wall.name = BaseBuilder.unique_name("wall")
     new_wall.origin = @pts[0]
@@ -266,6 +275,7 @@ def draw_wall
     end
 	puts "draw wall from " + @pts[0].to_s + " to " + @pts[1].to_s + " angle " + new_wall.angle.to_s if $VERBOSE
 	group, skin_group = new_wall.draw
+    model.commit_operation
 end
 
 # update the current state
@@ -368,6 +378,7 @@ PROPERTIES = [
     [ "Header Height", "header_height", nil ],
     [ "Length", "length", nil ],
     [ "Stud Spacing", "stud_spacing", nil ],
+	[ "On-Center Spacing", "on_center_spacing", "true|false"],
     [ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
     [ "Top Plate Count", "top_plate_count", "0|1|2" ],
 ].freeze
@@ -1358,6 +1369,7 @@ PROPERTIES = [
     [ "Type", "roof_style", "gable|shed" ],
     [ "Lumber Size", "style", "2x4|2x6|2x8|2x10|2x12" ],
     [ "Joist Spacing", "joist_spacing", nil ],
+	[ "On-Center Spacing", "on_center_spacing", "true|false"],
     [ "Pitch (x/12)  ", "pitch", nil ],
     [ "Overhang", "overhang", nil ],
     [ "Rake Overhang", "rake_overhang", nil ],
@@ -1601,6 +1613,7 @@ PROPERTIES = [
     # prompt, attr_name, value, enums
     [ "Lumber Size", "style", "2x4|2x6|2x8|2x10|2x12|TJI230 x 12|TJI230 x 10" ],
     [ "Joist Spacing", "joist_spacing", nil ],
+	[ "On-Center Spacing", "on_center_spacing", "true|false"],
 ].freeze
 	   
 def initialize()

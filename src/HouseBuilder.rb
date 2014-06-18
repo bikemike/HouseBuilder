@@ -1,3 +1,6 @@
+# Copyright (C) 2014 Mike Morrison
+# See LICENSE file for details.
+
 # Copyright 2005 Steve Hurlbut
 
 # Permission to use, copy, modify, and distribute this software for 
@@ -35,12 +38,15 @@ GLOBAL_OPTIONS = {
 		'wall.justify' => 'right',
 		'wall.height' => 8.feet,
 		'wall.stud_spacing' => 16,
+		'wall.on_center_spacing' => 'true',
 		'header_height' => 80,
 		'header_style' => '4x8',
 		'window.justify' => 'center',
 		'door.justify' => 'center',
 		'floor.joist_spacing' => 24,
+		'floor.on_center_spacing' => 'true',
 		'roof.joist_spacing' => 24,
+		'roof.on_center_spacing' => 'true',
 		'pitch' => 6.0,
 		'layer' => nil,
 	} if not defined?(GLOBAL_OPTIONS)
@@ -584,6 +590,7 @@ def initialize(options = {})
 		'height' => 8.feet,
 		'length' => 0,
 		'stud_spacing' => 16,
+		'on_center_spacing' => 'true',
 		'origin' => Geom::Point3d.new,
 		'endpt' => Geom::Point3d.new,
 		'angle' => 0,
@@ -692,10 +699,15 @@ def draw
 	# fill in studs
 	pt.z = 0 + STUD_THICKNESS*bottom_plate_count
 	y = 0
+	iteration = 0
 	while (y < length - 2*STUD_THICKNESS)
 		pt.y = y
 		entities += build_stud(pt.y, full_size, nil)
 		y += stud_spacing
+		if (iteration == 0 && on_center_spacing == 'true')
+			y -= STUD_THICKNESS/2 # MIKE MORRISON changed to on-center studs
+		end
+		iteration += 1
 	end
 
 	# draw the last stud
@@ -922,6 +934,7 @@ def initialize(options = {})
 		'height' => 8.feet,
 		'length' => 0,
 		'stud_spacing' => 16,
+		'on_center_spacing' => 'true',
 		'origin' => Geom::Point3d.new,
 		'angle' => 0,
 		'bottom_plate_count' => 1,
@@ -1546,6 +1559,7 @@ def initialize(wall, options = {})
 		'name' => '',
 		'type' => 'roof',
 		'joist_spacing' => 24,
+		'on_center_spacing' => 'true',
 		'style' => '2x8',
 		'ridge_style' => '2x10',
 		'roof_style' => GABLE_ROOF,
@@ -1893,6 +1907,7 @@ def initialize(options = {})
 		'name' => '',
 		'type' => 'floor',
 		'joist_spacing' => 24,
+		'on_center_spacing' => 'true',
 		'style' => '2x6',
 		'corner1' => [0, 0, 0],
 		'corner2' => [0, 0, 0],
@@ -1933,10 +1948,15 @@ def draw
 
 	# fill in the joists
 	y = pt.y
+	iteration = 0
 	while (y < y_length)
 		entities.push(build_joist(pt))
 		y += joist_spacing
+		if (iteration == 0 && on_center_spacing == 'true')
+			y -= @joist_thickness/2 # MIKE MORRISON - changed joists to be on center
+		end
 		pt.y = y
+		iteration += 1
 	end
 
 	# draw the last joist
