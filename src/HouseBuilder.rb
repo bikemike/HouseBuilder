@@ -15,6 +15,7 @@
 # Description :   classes to support building a house
 # Version     :   1.0
 # Date        :   July 30, 2005
+# Some bugfixes (in particular to doors) by tim Rowledge Mar 2010
 #-----------------------------------------------------------------------------
 require 'sketchup.rb'
 
@@ -1459,10 +1460,10 @@ def draw(wall)
 	# draw the header
     pt.y = y
 	pt.z = actual_header_height
-	entities.push(Lumber.draw_hort_lumber(pt, header_style, width + 2*STUD_THICKNESS, layer))
+	entities.push(Lumber.draw_hort_lumber(pt, header_style, width + 2*STUD_THICKNESS + 2*rough_opening, layer))
 
 	# draw the right trimmer stud and cripple
-    y += width + STUD_THICKNESS
+    y += width + STUD_THICKNESS + 2*rough_opening
 	entities += wall.build_stud(y, [[bottom, actual_header_height]], self)
 
 	# draw the left king stud
@@ -1472,7 +1473,7 @@ def draw(wall)
 	# cut out the bottom plate
 	first_corner = Geom::Point3d::new(0, left + 2*STUD_THICKNESS,
 		wall.bottom_plate_count*STUD_THICKNESS)
-	second_corner = Geom::Point3d::new(wall.width, first_corner.y + width,
+	second_corner = Geom::Point3d::new(wall.width, first_corner.y + width + 2*rough_opening,
 		first_corner.z)
 	Lumber.cut(wall.bottom_plate_group, first_corner, second_corner, -first_corner.z)
 

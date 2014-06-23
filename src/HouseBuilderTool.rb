@@ -805,7 +805,9 @@ def self.get_selected_wall
         end
     end
     # wall is not selected
-    UI.beep
+    if ($VERBOSE)
+    	UI.beep
+    end
     return nil
 end
 
