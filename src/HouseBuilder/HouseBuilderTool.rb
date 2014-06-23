@@ -20,7 +20,7 @@
 # Type        :   Tool
 #-----------------------------------------------------------------------------
 require 'sketchup.rb'
-require 'HouseBuilder.rb'
+require 'HouseBuilder/HouseBuilder.rb'
 
 # these are the states that a tool can be in
 STATE_EDIT = 0 if not defined? STATE_EDIT
