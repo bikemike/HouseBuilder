@@ -747,7 +747,7 @@ def initialize(options = {})
 		'height' => $hb_defaults[$house_builder_units]['wall']['height'],
 		'length' => 0,
 		'stud_spacing' => $hb_defaults[$house_builder_units]['wall']['stud_spacing'],
-		'on_center_spacing' => 'true',
+		'on_center_spacing' => $hb_defaults[$house_builder_units]['global']['on_center_spacing'],
 		'origin' => Geom::Point3d.new,
 		'endpt' => Geom::Point3d.new,
 		'angle' => 0,
@@ -2138,7 +2138,7 @@ def draw
 	# fill in the joists
 	y = pt.y
 	iteration = 0
-	while (y < y_length)
+	while (y < y_length - 2*@joist_thickness)
 		entities.push(build_joist(pt))
 		y += joist_spacing
 		if (iteration == 0 && on_center_spacing == 'true')
