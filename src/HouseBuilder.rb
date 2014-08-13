@@ -16,13 +16,13 @@ require 'LangHandler.rb'
 
 # Extension Manager
 $uStrings = LanguageHandler.new("House Builder")
-House_Builder_Extension = SketchupExtension.new $uStrings.GetString("House Builder"), "HouseBuilder/HouseBuilderTool.rb"
-House_Builder_Extension.description=$uStrings.GetString("A sketchup extension for creating wood framed buildings.")
-House_Builder_Extension.name= "House Builder"
-House_Builder_Extension.creator = "Steve Hurlbut"
-House_Builder_Extension.copyright = "2014 Mike Morrison, 2005 Steve Hurlbut, D. Bur"
-House_Builder_Extension.version = "1.3"
-Sketchup.register_extension House_Builder_Extension, true
+HouseBuilder_extension= SketchupExtension.new $uStrings.GetString("House Builder"), "HouseBuilder/HouseBuilderTool.rb"
+HouseBuilder_extension.description=$uStrings.GetString("A sketchup extension for creating wood framed buildings.")
+HouseBuilder_extension.name= "House Builder"
+HouseBuilder_extension.creator = "Steve Hurlbut"
+HouseBuilder_extension.copyright = "2014 Mike Morrison, 2005 Steve Hurlbut, D. Bur"
+HouseBuilder_extension.version = "1.3"
+Sketchup.register_extension HouseBuilder_extension, true
 
 
 #-----------------------------------------------------------------------------------------------------
@@ -330,4 +330,4 @@ if( not $HouseBuilder_menu_loaded )
 
 end
 (exec_on_autoload)
-file_loaded("HouseBuilder_extension.rb")
+file_loaded("HouseBuilder.rb")

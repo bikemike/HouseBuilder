@@ -1,4 +1,4 @@
 #! /bin/sh
 
 cd src
-zip -r ../HouseBuilder_extension.rbz * 
+zip -r ../HouseBuilder.rbz * 

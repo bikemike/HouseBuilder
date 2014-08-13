@@ -2072,4 +2072,4 @@ if (not file_loaded?("HouseBuilderTool.rb"))
     end
 end
 
-file_loaded("HouseBuilderTool.rb")
+file_loaded("HouseBuilder/HouseBuilderTool.rb")
