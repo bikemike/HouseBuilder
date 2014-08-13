@@ -1,7 +1,7 @@
 # Copyright (C) 2014 Mike Morrison
 # See LICENSE for details.
 
-# Copyright 2005 Steve Hurlbut
+# Copyright 2005 Steve Hurlbut, D.Bur
 
 # Permission to use, copy, modify, and distribute this software for 
 # any purpose and without fee is hereby granted, provided that the above
@@ -10,16 +10,9 @@
 # THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-#-----------------------------------------------------------------------------
-# Name        :   HouseBuilderTool
-# Description :   tools to build a house
-# Menu Item   :   Draw->House Builder
-# Context Menu:   Edit Wall
-# Version     :   1.0
-# Date        :   July 30, 2005
-# Type        :   Tool
-#-----------------------------------------------------------------------------
+
 require 'sketchup.rb'
+require 'HouseBuilder/HouseBuilderDefaults.rb'
 require 'HouseBuilder/HouseBuilder.rb'
 
 # these are the states that a tool can be in
@@ -70,31 +63,30 @@ end
 def display_global_options_dialog()
 	parameters = [
 	    # prompt, attr_name, value, enums
-	    [ "Wall Lumber Size", "wall.style", "2x4|2x6|2x8" ],
+	    [ "Wall Lumber Size", "wall.style", $hb_defaults[$house_builder_units]['wall']['lumber_sizes'].join("|") ],
 	    [ "Wall Plate Height", "wall.height", nil ],
-	    [ "Wall Stud Spacing", "wall.stud_spacing", nil ],
-		[ "On-Center Stud Spacing", "wall.on_center_spacing", "true|false"],
 	    [ "Wall Justification  ", "window.justify",  "left|center|right" ],
-	    [ "Window Justification  ", "window.justify",  "left|center|right" ],
-	    [ "Door Justification  ", "door.justify",  "left|center|right" ],
-	    [ "Header Height", "header_height", nil ],
-	    [ "Header Size", "header_style", "2x4|2x6|4x4|4x6|4x8|4x10|4x12|4x14|6x6|6x8|6x10|8x6|8x8|8x10" ],
-	    [ "Roof Pitch (x/12)  ", "pitch",  nil ],
+	    [ "Wall Stud Spacing", "wall.stud_spacing", nil ],
 	    [ "Roof Joist Spacing", 'roof.joist_spacing', nil ],
-		[ "On-Center Roof Joist Spacing", "roof.on_center_spacing", "true|false"],
 	 	[ "Floor Joist Spacing", 'floor.joist_spacing', nil ],
-		[ "On-Center Floor Joist Spacing", "floor.on_center_spacing", "true|false"],
+		[ "On-Center Spacing", "on_center_spacing", "true|false"],
+	    [ "Header Size", "header_style", $hb_defaults[$house_builder_units]['global']['header_sizes'].join("|") ],
+	    [ "Door Header Height", "door.header_height", nil ],
+	    [ "Door Justification  ", "door.justify",  "left|center|right" ],
+	    [ "Window Header Height", "window.header_height", nil ],
+	    [ "Window Justification  ", "window.justify",  "left|center|right" ],
+	    [ "Roof Pitch", "pitch",  nil ],
 	   ]
     prompts = []
     attr_names = []
     values = []
     enums = []
-    parameters.each { |a| prompts.push(a[0]); attr_names.push(a[1]); values.push(HouseBuilder::BaseBuilder::GLOBAL_OPTIONS[a[1]]); enums.push(a[2]) }
+    parameters.each { |a| prompts.push(a[0]); attr_names.push(a[1]); values.push(HouseBuilder::BaseBuilder.get_global_option(a[1])); enums.push(a[2]) }
     results = UI.inputbox(prompts, values, enums, 'Global Properties')
     if results
         i = 0
         attr_names.each do |name|
-            eval("HouseBuilder::BaseBuilder::GLOBAL_OPTIONS['#{name}'] = results[i]")
+            HouseBuilder::BaseBuilder.set_global_option(name,results[i])
             i = i + 1
         end
     end
@@ -169,6 +161,7 @@ end
     	
     	
 # minimum amount of wall before a window or door opening
+# FIXME: this should probably be 2xstud_z_size?
 MIN_WALL = 3 if not defined? MIN_WALL
 
 module HouseBuilder
@@ -180,24 +173,22 @@ module HouseBuilder
 # ESCAPE to exit the tool.
 class WallTool
 
-PROPERTIES = [
-    # prompt, attr_name, enums
-    [ "Wall Justification  ", "justify", "left|center|right" ],
-    [ "Lumber Size", "style", "2x4|2x6|2x8" ],
-    [ "Plate Height", "height", nil ],
-    [ "Header Height", "header_height", nil ],
-    [ "Length", "length", nil ],
-    [ "Stud Spacing", "stud_spacing", nil ],
-	[ "On-Center Spacing", "on_center_spacing", "true|false"],
-    [ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
-    [ "Top Plate Count", "top_plate_count", "0|1|2" ],
-   ].freeze
+	attr_reader :properties
 	   
 def initialize()
+	@properties = [
+		# prompt, attr_name, enums
+		[ "Wall Justification  ", "justify", "left|center|right" ],
+		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['wall']['lumber_sizes'].join("|") ],
+		[ "Plate Height", "height", nil ],
+		[ "Stud Spacing", "stud_spacing", nil ],
+		[ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
+		[ "Top Plate Count", "top_plate_count", "0|1|2" ],
+	   ]
+
 	@wall = HouseBuilder::Wall.new() 
-	results = display_dialog("Wall Properties", @wall, PROPERTIES)
+	results = display_dialog("Wall Properties", @wall, @properties)
 	return false if not results
-	@wall.width = Lumber.size_from_nominal("common", Lumber.length_from_style(@wall.style));	
 end
 
 def reset
@@ -356,6 +347,7 @@ def draw(view)
 
     # show the wall base outline
     if (@state == STATE_PICK_NEXT)
+		#puts "wall width3: " + @wall.width.to_s + " " + @wall.width.class.to_s
         (@offset_pt0, @offset_pt1) = draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
         @drawn = true
     end
@@ -368,24 +360,23 @@ end # class WallTool
 # Draw a gable wall
 class GableWallTool < WallTool
 
-PROPERTIES = [
-    # prompt, attr_name, value, enums
-    [ "Pitch (x/12)  ", "pitch", nil ],
-    [ "Roof type", 'roof_type', "gable|shed" ],
-    [ "Wall Justification  ", "justify", "left|center|right" ],
-    [ "Lumber Size", "style", "2x4|2x6|2x8" ],
-    [ "Plate Height", "height", nil ],
-    [ "Header Height", "header_height", nil ],
-    [ "Length", "length", nil ],
-    [ "Stud Spacing", "stud_spacing", nil ],
-	[ "On-Center Spacing", "on_center_spacing", "true|false"],
-    [ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
-    [ "Top Plate Count", "top_plate_count", "0|1|2" ],
-].freeze
+	attr_reader :properties
 
 def initialize()
+	@properties = [
+		# prompt, attr_name, value, enums
+		[ "Pitch", "pitch", nil ],
+		[ "Roof type", 'roof_type', "gable|shed" ],
+		[ "Wall Justification  ", "justify", "left|center|right" ],
+		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['wall']['lumber_sizes'].join("|") ],
+		[ "Plate Height", "height", nil ],
+		[ "Stud Spacing", "stud_spacing", nil ],
+		[ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
+		[ "Top Plate Count", "top_plate_count", "0|1|2" ],
+	]
+
 	@wall = HouseBuilder::GableWall.new() 
-	results = display_dialog("Gable Wall Properties", @wall, PROPERTIES)
+	results = display_dialog("Gable Wall Properties", @wall, @properties)
 	return false if not results
 end
 
@@ -405,7 +396,6 @@ class EditWallTool
 attr_accessor :wall, :group, :skin_group, :state, :changed
 
 def initialize(wall)
-    puts "EditWallTool: initialize"
     @state = STATE_EDIT
     @drawn = false
     @selection = nil
@@ -730,9 +720,11 @@ end
 def self.show_prop_dialog
     tool = EditWallTool.new(nil)
     if (tool.wall.kind_of?(HouseBuilder::GableWall))
-        results = display_dialog("Gable Wall Properties", tool.wall, GableWallTool::PROPERTIES)
+		gabletool = GableWallTool.new
+        results = display_dialog("Gable Wall Properties", tool.wall, gabletool.properties)
     else
-        results = display_dialog("Wall Properties", tool.wall, WallTool::PROPERTIES)
+		walltool = WallTool.new
+        results = display_dialog("Wall Properties", tool.wall, walltool.properties)
     end
 	if (results)
 	    tool.changed = true
@@ -804,10 +796,6 @@ def self.get_selected_wall
             return group
         end
     end
-    # wall is not selected
-    if ($VERBOSE)
-    	UI.beep
-    end
     return nil
 end
 
@@ -827,24 +815,32 @@ end # class EditWallTool
 # window is in the correct position.
 class WindowTool
 
-PROPERTIES = [
-    # prompt, attr_name, value, enums
-    [ "Offset Justification  ", "justify", "left|center|right" ],
-    [ "Header Height", "header_height", nil ],
-    [ "Header Size", "header_style", "2x4|2x6|4x4|4x6|4x8|4x10|4x12|4x14|6x6|6x8|6x10|8x6|8x8|8x10" ],
-    [ "Sill Size", "sill_style", "2x4|2x6|2x8|4x4|4x6|4x8" ],
-    [ "Width", "width", nil ],
-    [ "Height", "height", nil ],
-].freeze
-	   
+	attr_reader :properties
+
 def initialize(wall_group)
-	@obj = HouseBuilder::Window.new()
+	@properties = [
+		# prompt, attr_name, value, enums
+		[ "Offset Justification  ", "justify", "left|center|right" ],
+		[ "Header Height", "header_height", nil ],
+		[ "Header Size", "header_style", $hb_defaults[$house_builder_units]['global']['header_sizes'].join("|") ],
+		[ "Sill Size", "sill_style", $hb_defaults[$house_builder_units]['window']['sill_sizes'].join("|") ],
+		[ "Width", "width", nil ],
+		[ "Height", "height", nil ],
+	]
+	   
 	@wall = create_wall_from_drawing(wall_group)
+	@obj = HouseBuilder::Window.new(@wall)
     @objtype = "Wall"
-	results = display_dialog("Window Properties", @obj, PROPERTIES)
-	return false if not results
-	reset
-	return true
+end
+
+def show_dialog
+	results = display_dialog("Window Properties", @obj, @properties)
+	if results
+		reset()
+		return true
+	else
+		return false
+	end
 end
 
 def reset
@@ -1027,24 +1023,32 @@ end # class WindowTool
 # allows the user to place the door using the mouse. Click the mouse when the
 # door is in the correct position.
 class DoorTool < WindowTool
-    
-PROPERTIES = [
-    # prompt, attr_name, value, enums
-    [ "Offset Justification  ", "justify", "left|center|right" ],
-    [ "Header Height", "header_height", nil ],
-    [ "Header Size", "header_style", "2x4|2x6|4x4|4x6|4x8|4x10|4x12|4x14|6x6|6x8|6x10|8x6|8x8|8x10" ],
-    [ "Width", "width", nil ],
-    [ "Height", "height", nil ],
-].freeze
 	   
+	attr_reader :properties
+
 def initialize(wall_group)
-	@obj = HouseBuilder::Door.new()
+	@properties = [
+		# prompt, attr_name, value, enums
+		[ "Offset Justification  ", "justify", "left|center|right" ],
+		[ "Header Height", "header_height", nil ],
+		[ "Header Size", "header_style", $hb_defaults[$house_builder_units]['global']['header_sizes'].join("|") ],
+		[ "Width", "width", nil ],
+		[ "Height", "height", nil ],
+	]
+
 	@wall = create_wall_from_drawing(wall_group)
+	@obj = HouseBuilder::Door.new(@wall)
 	@objtype = "Door"
-	results = display_dialog("Door Properties", @obj, PROPERTIES)
-	return false if not results
-	reset
-	return true
+end
+
+def show_dialog
+	results = display_dialog("Door Properties", @obj, @properties)
+	if results
+		reset()
+		return true
+	else
+		return false
+	end
 end
 
 def reset
@@ -1265,14 +1269,16 @@ def show_prop_dialog
     # puts "window = " + @obj.inspect
     case @objtype
     when "Window"
-        results = display_dialog("Window Properties", @selected_obj, WindowTool::PROPERTIES)
+		windowtool = WindowTool.new
+        results = display_dialog("Window Properties", @selected_obj, windowtool.properties)
     when "Door"
-        results = display_dialog("Door Properties", @selected_obj, DoorTool::PROPERTIES)
+		doortool = DoorTool.new
+        results = display_dialog("Door Properties", @selected_obj, doortool.properties)
     end
 	if (results)
         draw_obj
     end
-    Sketchup.active_model.select_tool(nil)
+    #Sketchup.active_model.select_tool(nil)
 end
 
 # initiate a 'move' operation
@@ -1365,23 +1371,22 @@ end # class EditOpeningTool
 #    left rear
 class RoofTool
     attr_accessor :roof_style_name
+	attr_reader :properties
     
-PROPERTIES = [
-    # prompt, attr_name, value, enums
-    [ "Type", "roof_style", "gable|shed" ],
-    [ "Lumber Size", "style", "2x4|2x6|2x8|2x10|2x12" ],
-    [ "Joist Spacing", "joist_spacing", nil ],
-	[ "On-Center Spacing", "on_center_spacing", "true|false"],
-    [ "Pitch (x/12)  ", "pitch", nil ],
-    [ "Overhang", "overhang", nil ],
-    [ "Rake Overhang", "rake_overhang", nil ],
-].freeze
-
 def initialize()
+	@properties = [
+		# prompt, attr_name, value, enums
+		[ "Type", "roof_style", "gable|shed" ],
+		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['roof']['lumber_sizes'].join("|") ],
+		[ "Joist Spacing", "joist_spacing", nil ],
+		[ "Pitch", "pitch", nil ],
+		[ "Overhang", "overhang", nil ],
+		[ "Rake Overhang", "rake_overhang", nil ],
+	]
     @tool_name = "ROOFTOOL"
     wall = HouseBuilder::Wall.new()
 	@obj = HouseBuilder::Roof.new(wall) 
-	results = display_dialog("Roof Properties", @obj, PROPERTIES)
+	results = display_dialog("Roof Properties", @obj, @properties)
 	return false if not results
 	reset
 	@type = "roof"
@@ -1611,17 +1616,18 @@ end # class RoofTool
 # Draw floors
 class FloorTool < RoofTool
 
-PROPERTIES = [
-    # prompt, attr_name, value, enums
-    [ "Lumber Size", "style", "2x4|2x6|2x8|2x10|2x12|TJI230 x 12|TJI230 x 10" ],
-    [ "Joist Spacing", "joist_spacing", nil ],
-	[ "On-Center Spacing", "on_center_spacing", "true|false"],
-].freeze
+	attr_reader :properties
 	   
 def initialize()
+	@properties= [
+		# prompt, attr_name, value, enums
+		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['floor']['lumber_sizes'].join("|") ],
+		[ "Joist Spacing", "joist_spacing", nil ],
+	]
+
     @tool_name = "FLOORTOOL"
 	@obj = HouseBuilder::Floor.new() 
-	results = display_dialog("Floor Properties", @obj, PROPERTIES)
+	results = display_dialog("Floor Properties", @obj, @properties)
 	return false if not results
 	reset
 	@type = "floor"
@@ -1630,6 +1636,395 @@ end
 end # class FloorTool
 
 end # module HouseBuilder
+
+
+# --------  E S T I M A T E  ------------------------------------------------
+
+def hb_estimate
+  model=Sketchup.active_model
+  view=model.active_view
+  ents=model.entities
+  $walls_array = []
+  $skins_array = []
+  $floors_array = []
+  $gables_array = []
+  $roofs_array = []
+  
+  # Output file
+  file_name = Sketchup.active_model.title + "_walls.txt"
+  export_file = File.new( file_name , "w" )
+  # Search and sort groups
+  ents.each do |e|
+    if e.typename == "Group" and e.attribute_dictionary "einfo"
+      attrs = (e.attribute_dictionary "einfo").size
+	  type = e.get_attribute('einfo','type')
+      case type
+        when 'wall' 
+			if (e.get_attribute('einfo','name') =~ /_skin/)
+				$skins_array.push e
+			else
+				$walls_array.push e
+			end
+        when 'floor' 
+          $floors_array.push e
+        when 'GableWall' 
+			if (e.get_attribute('einfo','name') =~ /_skin/)
+				$skins_array.push e
+			else
+				$gables_array.push e
+			end
+        when 'roof'
+          $roofs_array.push e
+        #else
+			#puts "Unknown HouseBuilder object type."
+      end
+    end
+  end
+
+  export_file.puts "Walls: " + $walls_array.length.to_s
+  export_file.puts "Gabbles: " + $gables_array.length.to_s
+  export_file.puts "Floors: " + $floors_array.length.to_s
+  export_file.puts "Skins: " + $skins_array.length.to_s
+  export_file.puts "Roofs: " + $roofs_array.length.to_s
+  
+  # Rect walls
+  export_file.puts "_____________________________"
+  export_file.puts " RECTANGULAR WALLS"
+  export_file.puts "_____________________________"
+  export_file.puts ""
+  
+  $walls_array.each do |w|
+    ad = w.attribute_dictionary "einfo"
+    #Compute stud length ratio per ^2
+    slr = (stud_length_ratio ad)
+    # Check for doors and windows
+    objects = ad["object_names"]
+    # Related skin group
+    skin_group = find_skin_group( ad["name"] )
+    
+    # Output
+    export_file.puts "Wall ID:\t\t\t" + ad["name"]
+    export_file.puts "Lumber section:\t\t" + ad["style"]
+    export_file.puts "Start point:\t\t" + ad["origin"].to_s
+    export_file.puts "End point:\t\t" + ad["endpt"].to_s
+    export_file.puts "Length:\t\t\t" + ad["length"].to_s + ", " + ad["justify"] + " justified"
+    export_file.puts "Height:\t\t\t" + ad["height"].to_s
+    export_file.puts "Width:\t\t\t" + ad["width"].to_s
+    export_file.puts "Bottom plates:\t\t" + ad["bottom_plate_count"].to_s
+    export_file.puts "Top plates:\t\t" + ad["top_plate_count"].to_s
+    export_file.puts "Stud spacing:\t\t" + ad["stud_spacing"].to_s
+    export_file.puts "Stud height:\t\t" + (rect_walls_stud_height ad).to_s
+    export_file.puts "Total plates length:\t\t" + ((ad["bottom_plate_count"]*ad["length"]) + (ad["top_plate_count"]*ad["length"])).to_s
+    export_file.puts "Total studs length:\t\t" + (rect_walls_total_stud_length ad).to_s
+    #export_file.puts "Objects:\t" + objects.gsub("|"," ")
+    if skin_group
+      export_file.puts "Siding surface:\t\t" + skin_area(skin_group).to_s + "^2"
+      else
+      export_file.puts "No siding skin found for " + ad["name"]
+    end
+    export_file.puts "_____________________________"
+  end
+  
+  # Gabble walls
+  export_file.puts " GABLE WALLS"
+  export_file.puts "_____________________________"
+  export_file.puts ""
+    
+  $gables_array.each do |w|
+    ad = w.attribute_dictionary "einfo"
+    #puts ad.keys
+    # Compute stud length ratio per ^2
+    slr = (stud_length_ratio ad)
+    # top plate length
+    tpl = (gable_top_plate_length ad["length"], ad["pitch"])
+    # Check for doors and windows
+    objects = ad["object_names"]
+    # Related skin group
+    skin_group = find_skin_group( ad["name"] )
+    
+    # Output
+    export_file.puts "Wall ID:\t\t\t" + ad["name"]
+    export_file.puts "Lumber section:\t\t" + ad["style"]
+    export_file.puts "Start point:\t\t" + ad["origin"].to_s
+    export_file.puts "End point:\t\t" + ad["endpt"].to_s
+    export_file.puts "Length:\t\t\t" + ad["length"].to_s + ", " + ad["justify"] + " justified"
+    export_file.puts "Height:\t\t\t" + ad["height"].to_s
+    export_file.puts "Width:\t\t\t" + ad["width"].to_s
+    export_file.puts "Type:\t\t\t" + ad["roof_type"]
+    export_file.puts "Roof slope:\t\t" + ad["pitch"].to_s + "°"
+    export_file.puts "Bottom plate:\t\t" + ad["bottom_plate_count"].to_s
+    export_file.puts "Top plate:\t\t" + ad["top_plate_count"].to_s
+    export_file.puts "Stud spacing:\t\t" + ad["stud_spacing"].to_s
+    export_file.puts "Top plates length:\t\t" + (ad["top_plate_count"]*tpl).to_s
+    export_file.puts "Bot. plates length:\t\t" + (ad["bottom_plate_count"]*ad["length"].to_l).to_s
+    export_file.puts "Total studs length:\t\t" + (gables_total_stud_length ad).to_s
+    #export_file.puts "Objects:\t" + objects.gsub("|"," ")
+    if skin_group
+      export_file.puts "Siding surface:\t\t" + skin_area(skin_group).to_s + "^2"
+      else
+      export_file.puts "No siding skin found for " + ad["name"]
+    end
+    export_file.puts "_____________________________"
+  end
+  
+  # Floors
+  export_file.puts " FLOORS"
+  export_file.puts "_____________________________"
+  export_file.puts ""
+  
+  $floors_array.each do |f|
+    ad = f.attribute_dictionary "einfo"
+    #puts ad.keys
+    # Compute surface
+    surf = (floor_surface ad)
+    # Compute total joists length
+    joists_length = (floor_total_joist_length ad)
+    # Output
+    export_file.puts "Floor ID:\t\t\t" + ad["name"]
+    export_file.puts "Joist section:\t\t" + ad["style"]
+    export_file.puts "Joist spacing:\t\t" + ad["joist_spacing"].to_s
+    export_file.puts "Total joists length:\t\t" + joists_length.to_s
+    export_file.puts "Surface:\t\t\t" + surf.to_s + " ^2"
+    export_file.puts "_____________________________"
+
+  end
+  
+  # Roofs
+  export_file.puts " ROOFS"
+  export_file.puts "_____________________________"
+  export_file.puts ""
+  
+  $roofs_array.each do |r|
+    ad = r.attribute_dictionary "einfo"
+    # Compute projected base surface
+    base_surf = (roof_base_proj_surface ad)
+    # Compute projected total surface
+    tot_surf = (roof_tot_proj_surface ad)
+    # Compute real total surface
+    real_surf = (roof_real_surface ad)
+    # Compute joists length
+    joists_length = (roof_total_joist_length ad)
+    
+    # Output
+    export_file.puts "Roof ID:\t\t\t" + ad["name"]
+    export_file.puts "Roof type:\t\t" + ad["roof_style"]
+    export_file.puts "Slope:\t\t\t" + ad["pitch"].to_s + "°"
+    export_file.puts "Framing:\t\t\t" + ad["framing"]
+    export_file.puts "Joist spacing:\t\t" + ad["joist_spacing"].to_s
+    export_file.puts "Overhang:\t\t" + ad["overhang"].to_s
+    export_file.puts "Rake overhang:\t\t" + ad["rake_overhang"].to_s
+    export_file.puts "Base proj. surface:\t\t" + base_surf.to_s + "^2"
+    export_file.puts "Total proj. surface:\t\t" + tot_surf.to_s + "^2"
+    export_file.puts "Total surface:\t\t" + real_surf.to_s + "^2"
+    export_file.puts "Ridge and banks:\t\t" + joists_length[0].to_s
+    export_file.puts "Total joists length:\t\t" + joists_length[1].to_s
+  end
+    
+export_file.close
+UI.openURL(file_name)
+end
+
+#------------------------------ Skin related
+def find_skin_group( wall )
+skin_group = wall + "_skin"
+res_group = nil
+Sketchup.active_model.entities.each do |e|
+  if (e.kind_of?(Sketchup::Group))
+    n = e.get_attribute('einfo', 'name')
+    if (n && (n == skin_group))
+      res_group = e
+      break
+    end
+  end
+end
+return res_group
+end
+
+def skin_area ( skin_group )
+ents = skin_group.entities
+surfs = []
+ents.each do |e|
+  if (e.kind_of?(Sketchup::Face))
+    surfs.push e.area
+  end
+end
+return surfs.sort.reverse[0]/1550.0031000062
+end
+#------------------------------ Floor related
+def floor_surface( d )
+  wid = d["corner1"].distance d["corner2"]
+  len = d["corner1"].distance d["corner4"]
+  srf = (len*wid) / 1550.0031000062
+  #puts srf.to_s
+  return srf
+end
+
+def floor_total_joist_length( d )
+spacing = d["joist_spacing"]
+joist_length = d["corner1"].distance d["corner2"]
+floor_length = d["corner1"].distance d["corner4"]
+#puts "JL: " + joist_length.to_s
+#puts "FL: " + floor_length.to_s
+n_joists = (floor_length / spacing).ceil + 1
+#puts n_joists.to_s
+return (n_joists*joist_length).to_l.ceil
+end
+
+#------------------------------ Wall related
+def stud_length_ratio( d )
+  spacing = d["stud_spacing"].to_l
+  ratio = (((d["length"].to_l / spacing)+1) / d["length"].to_l)
+  #puts ratio.to_s
+end
+
+def rect_walls_stud_height( d )
+  interval = d["stud_spacing"]
+  total_height = d["height"].to_l
+  thick = d["style"].split("x")[0].to_f
+  stud_thick = thick / 10.0
+  return total_height - (d["bottom_plate_count"]*stud_thick) - (d["top_plate_count"]*stud_thick)
+end
+
+def gable_walls_average_stud_height( d )
+  type = d["roof_type"]
+  interval = d["stud_spacing"]
+  low_height = d["height"].to_l
+  ang = d["pitch"].degrees
+  thick = d["style"].split("x")[0].to_f
+  stud_thick = thick / 10.0
+  wl = d["length"].to_l
+  
+  case type
+    when "gable"
+      high_height = low_height + ((wl/2.0)*Math.tan(ang))
+      #puts "HH gable" + high_height.to_s
+    when "shed"
+      high_height = low_height + (wl*Math.tan(ang))
+      #puts "HH shed " + high_height.to_s
+  end
+  ret = (((high_height + low_height)/2.0) - (d["bottom_plate_count"]*stud_thick) - (d["top_plate_count"]*stud_thick))
+  #puts "average H " + ret.to_s
+  return ret
+  
+end
+
+def rect_walls_total_stud_length( d )
+sh = rect_walls_stud_height( d )
+wl = d["length"].to_l
+spacing = d["stud_spacing"].to_l
+n_studs = (wl / spacing).ceil + 1
+return n_studs*sh
+end
+#------------------------------ Gable related
+def gables_total_stud_length( d )
+sh = gable_walls_average_stud_height( d )
+spacing = d["stud_spacing"]
+wl = d["length"]
+n_studs = (wl / spacing).ceil + 1
+#puts n_studs.to_s
+return n_studs*sh
+end
+
+def gable_top_plate_length( w_length, pitch )
+ang = pitch.degrees
+#puts ang.to_s
+#puts w_length.class
+return w_length.to_l / Math.cos(ang).abs
+end
+
+#------------------------------ Roof related
+def roof_base_proj_surface( d )
+  wid = d["corner1"].distance d["corner2"]
+  len = d["corner1"].distance d["corner4"]
+  srf = (len*wid) / 1550.0031000062
+  return srf
+end
+
+def roof_tot_proj_surface( d )
+  wid = d["corner1"].distance d["corner2"]
+  len = d["corner1"].distance d["corner4"]
+  over1 = d["overhang"]
+  over2 = d["rake_overhang"]
+  tot_wid = wid + (2*over1)
+  tot_len = len + (2*over2)
+  srf = (tot_len*tot_wid) / 1550.0031000062
+  return srf
+end
+
+def roof_real_surface( d )
+  ang = d["pitch"].degrees
+  wid = d["corner1"].distance d["corner2"]
+  len = d["corner1"].distance d["corner4"]
+  over1 = d["overhang"]
+  over2 = d["rake_overhang"]
+  tot_wid = (wid + (2*over1)) / Math.cos(ang).abs
+  tot_len = len + (2*over2)
+  srf = (tot_len*tot_wid) / 1550.0031000062
+  return srf
+end
+
+def roof_total_joist_length( d )
+  ang = d["pitch"].degrees
+  spacing = d["joist_spacing"]
+  wid = d["corner1"].distance d["corner2"]
+  len = d["corner1"].distance d["corner4"]
+  over1 = d["overhang"]
+  over2 = d["rake_overhang"]
+  tot_wid = (wid + (2*over1)) / Math.cos(ang).abs
+  tot_len = len + (2*over2)
+  n_joists = (tot_len / spacing).ceil + 2
+  #puts "NJ " + n_joists.to_s
+  #puts "TW " + tot_wid.to_cm.to_s
+  return [(tot_len*3).to_l, (tot_wid*n_joists).to_l] 
+end
+
+
+#------------------------------ Label HB objects
+def hb_tag_objects
+model=Sketchup.active_model
+view=model.active_view
+ents=model.entities
+hb_array = []
+ss = model.selection
+ss.clear
+# Erase previous tags if any
+tag_layer = model.layers.add("HB_tags")
+if tag_layer
+  ents.each do |e|
+  if e.layer.name == "HB_tags"
+    ss.add e
+  end
+  end
+  ss.each do |e|
+    e.erase!
+  end
+end
+# Set HB_tag layer current
+old_layer = model.active_layer
+model.active_layer = "HB_tags"
+# Search HB groups
+  ents.each do |e|
+    if e.typename == "Group" and e.attribute_dictionary "einfo"
+      hb_array.push e
+    end
+  end
+# Put a text label from bounding box center with object ID
+hb_array.each do |w|
+  ad = w.attribute_dictionary "einfo"
+  id = ad["name"]
+  center = w.bounds.center
+  if id
+    if id["_skin"]
+      Sketchup.active_model.entities.add_text id, center, Geom::Vector3d.new(50.cm,-50.cm,50.cm)
+    else
+      Sketchup.active_model.entities.add_text id, center, Geom::Vector3d.new(-50.cm,-50.cm,50.cm)
+    end
+  end
+end
+# Restore previous layer
+model.active_layer = old_layer
+end
+
 
 #-----------------------------------------------------------------------------
 # Add a menu items
@@ -1646,17 +2041,30 @@ if (not file_loaded?("HouseBuilderTool.rb"))
     UI.add_context_menu_handler do |menu|
         wall = HouseBuilder::EditWallTool.get_selected_wall
         if (wall)
-            submenu = menu.add_submenu("Edit Wall") { HouseBuilder::EditWallTool.edit_wall }
-            submenu.add_item("-- WALLS --")            { }
-            submenu.add_item("Change Wall Properties"){ HouseBuilder::EditWallTool.show_prop_dialog }
+            submenu = menu.add_submenu("Edit Wall"){ HouseBuilder::EditWallTool.edit_wall }
+
             submenu.add_item("Move Wall")             { HouseBuilder::EditWallTool.move }
-            submenu.add_item("-- WINDOWS --")         { }
-            submenu.add_item("Add Window")            { Sketchup.active_model.select_tool HouseBuilder::WindowTool.new(wall) }    
+            submenu.add_item("Wall Properties"){ HouseBuilder::EditWallTool.show_prop_dialog }
+			submenu.add_separator()
+			cmd = UI::Command.new(("Insert Window")) {
+				windowtool = HouseBuilder::WindowTool.new(wall)
+				if windowtool.show_dialog()
+					Sketchup.active_model.select_tool windowtool
+				end
+			}
+
+            submenu.add_item(cmd)
             submenu.add_item("Change Window Properties"){ Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "CHANGE_PROPERTIES") }          
             submenu.add_item("Move Window")             { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "MOVE") }          
             submenu.add_item("Delete Window")           { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "DELETE") }   
-            submenu.add_item("-- DOORS --")            { }
-            submenu.add_item("Add Door")              { Sketchup.active_model.select_tool HouseBuilder::DoorTool.new(wall) }          
+			submenu.add_separator()
+			cmd = UI::Command.new(("Insert Door")) {
+				doortool = HouseBuilder::DoorTool.new(wall)
+				if doortool.show_dialog()
+					Sketchup.active_model.select_tool doortool
+				end
+			}
+            submenu.add_item(cmd)
             submenu.add_item("Change Door Properties"){ Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "CHANGE_PROPERTIES") }          
             submenu.add_item("Move Door")             { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "MOVE") }          
             submenu.add_item("Delete Door")           { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "DELETE") }          

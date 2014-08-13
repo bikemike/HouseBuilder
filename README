@@ -1,1 +1,14 @@
-A SketchUp ruby extension to aid in house building.
+A SketchUp extension for framing a building.
+
+
+Future work:
+
+Save Settings:
+ Sketchup.read_default "mysection", "variable", "default"
+ Sketchup.write_default "mysection", "variable", "value"
+
+
+2) skin thickness and perhaps a settable offset value so skin on adjoining wall/floor/ceiling/roof join on edges correctly...
+3) skin and rim joists on floor (ability to select rim joints as lumber and joists as engineered for example)
+4) openings in floor (create floor/ceiling framing with openings for stairs, AC vents, etc)
+5) openings in roof (skylights, hatches)

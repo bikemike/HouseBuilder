@@ -1,6 +1,7 @@
 # Copyright (C) 2014 Mike Morrison
 # See LICENSE file for details.
 
+# Copyright 2005 Steve Hurlbut, D. Bur
 # Copyright 2005 Steve Hurlbut
 
 # Permission to use, copy, modify, and distribute this software for 
@@ -10,17 +11,88 @@
 # THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-#-----------------------------------------------------------------------------
-# Name        :   HouseBuilder
-# Description :   classes to support building a house
-# Version     :   1.0
-# Date        :   July 30, 2005
+
 # Some bugfixes (in particular to doors) by tim Rowledge Mar 2010
-#-----------------------------------------------------------------------------
+
 require 'sketchup.rb'
+require 'HouseBuilder/HouseBuilderDefaults.rb'
 
 # set to true for debug output to console
 $VERBOSE = false
+
+# Run
+def exec_on_autoload
+hb_init_config
+#load "HouseBuilder/HouseBuilderTool.rb"
+end
+
+def hb_credits
+	credits = ""
+	#credits += House_Builder_Extension.name + " " + House_Builder_Extension.version + "\n"
+	#credits += "Copyright (C) " + House_Builder_Extension.copyright + "\n"
+	credits += House_Builder_Extension.description + "\n\n"
+	credits += "Mike Morrison - 2014\nBug fixes, merge of metric and imperial versions, and other updates.\n\n"
+	credits += "Tim Rowledge - 2010\nBug fixes (in particular to doors).\n\n"
+	credits += "D. Bur - 2007\nToolbar, metric version, estimates, tags.\n\n"
+	credits += "Steve Hurlbut - 2005\nOriginal program."
+	UI.messagebox(credits, MB_MULTILINE, House_Builder_Extension.name + " " + House_Builder_Extension.version)
+end
+
+def check_for_wall_selection
+wall = HouseBuilder::EditWallTool.get_selected_wall
+return wall
+end
+
+# This is an example of an observer that watches the options provider.
+class HouseBuilderOptionsProviderObserver < Sketchup::OptionsProviderObserver
+	# UnitsOptions, LengthUnit
+	def onOptionsProviderChanged(provider, name)
+		if (name.to_s == "LengthUnit")
+			unit_type = provider["LengthUnit"]
+			hb_update_config(unit_type)
+		end
+	end
+end
+
+# This is an example of an observer that watches the application for
+# new models and shows a messagebox.
+class HouseBuilderAppObserver < Sketchup::AppObserver
+	def onNewModel(model)
+		options_provider = Sketchup.active_model.options["UnitsOptions"]
+		options_provider.add_observer(HouseBuilderOptionsProviderObserver.new)
+	end
+	def onOpenModel
+		options_provider = Sketchup.active_model.options["UnitsOptions"]
+		options_provider.add_observer(HouseBuilderOptionsProviderObserver.new)
+	end
+end
+
+def hb_update_config(unit_type)
+	case unit_type
+	when 0..1
+		new_units = "imperial"
+	else
+		new_units = "metric"
+	end
+	if ($house_builder_units != new_units)
+		$house_builder_units  = new_units
+	end
+end
+
+def hb_init_config
+	# Attach the observer
+	Sketchup.add_observer(HouseBuilderAppObserver.new)
+
+	options_provider = Sketchup.active_model.options["UnitsOptions"]
+	options_provider.add_observer(HouseBuilderOptionsProviderObserver.new)
+
+	unit_type = options_provider["LengthUnit"]
+	hb_update_config(unit_type)
+end
+
+$house_builder_units  = "imperial"
+hb_init_config
+
 
 module HouseBuilder
 
@@ -34,30 +106,48 @@ class BaseBuilder
     attr_writer :table
 
 # global defaults that can be modified by caller
-GLOBAL_OPTIONS = {
-		'wall.style' => '2x4',
-		'wall.justify' => 'right',
-		'wall.height' => 8.feet,
-		'wall.stud_spacing' => 16,
-		'wall.on_center_spacing' => 'true',
-		'header_height' => 80,
-		'header_style' => '4x8',
-		'window.justify' => 'center',
-		'door.justify' => 'center',
-		'floor.joist_spacing' => 24,
-		'floor.on_center_spacing' => 'true',
-		'roof.joist_spacing' => 24,
-		'roof.on_center_spacing' => 'true',
-		'pitch' => 6.0,
-		'layer' => nil,
-	} if not defined?(GLOBAL_OPTIONS)
+GLOBAL_OPTIONS_METRIC = {
+	'header_style' => $hb_defaults['metric']['global']['header_style'],
+	'pitch' => $hb_defaults['metric']['global']['pitch'],
+	'on_center_spacing' => $hb_defaults['metric']['global']['on_center_spacing'], 
+	'wall.style' => $hb_defaults['metric']['wall']['style'],
+	'wall.justify' => $hb_defaults['metric']['wall']['justify'],
+	'wall.height' => $hb_defaults['metric']['wall']['height'],
+	'wall.stud_spacing' => $hb_defaults['metric']['wall']['stud_spacing'],
+	'window.header_height' => $hb_defaults['metric']['window']['header_height'],
+	'window.justify' => $hb_defaults['metric']['window']['justify'],
+	'door.header_height' => $hb_defaults['metric']['door']['header_height'],
+	'door.justify' => $hb_defaults['metric']['door']['justify'],
+	'floor.joist_spacing' => $hb_defaults['metric']['floor']['joist_spacing'],
+	'roof.joist_spacing' => $hb_defaults['metric']['roof']['joist_spacing'],
+	'layer' => nil,
+} if not defined?(GLOBAL_OPTIONS_METRIC)
+
+GLOBAL_OPTIONS_IMPERIAL = {
+	'header_style' => $hb_defaults['imperial']['global']['header_style'],
+	'pitch' => $hb_defaults['imperial']['global']['pitch'],
+	'on_center_spacing' => $hb_defaults['imperial']['global']['on_center_spacing'], 
+	'wall.style' => $hb_defaults['imperial']['wall']['style'],
+	'wall.justify' => $hb_defaults['imperial']['wall']['justify'],
+	'wall.height' => $hb_defaults['imperial']['wall']['height'],
+	'wall.stud_spacing' => $hb_defaults['imperial']['wall']['stud_spacing'],
+	'window.header_height' => $hb_defaults['imperial']['window']['header_height'],
+	'window.justify' => $hb_defaults['imperial']['window']['justify'],
+	'door.header_height' => $hb_defaults['imperial']['door']['header_height'],
+	'door.justify' => $hb_defaults['imperial']['door']['justify'],
+	'floor.joist_spacing' => $hb_defaults['imperial']['floor']['joist_spacing'],
+	'roof.joist_spacing' => $hb_defaults['imperial']['roof']['joist_spacing'],
+	'layer' => nil,
+} if not defined?(GLOBAL_OPTIONS_IMPERIAL)
+
 	    
 # initialize attributes
 def initialize(hash=nil)
     @table = {}
+	table[:metric] = self.class.is_metric()
     if hash
         for k,v in hash
-            @table[k.to_sym] = v
+            table[k.to_sym] = v
             new_member(k)
         end
     end
@@ -77,21 +167,59 @@ def max(x, y)
     return y
 end
 
+def is_metric
+	return table[:metric]
+end
+
+def is_imperial
+	return (!is_metric())
+end
+
+def self.is_metric
+	return ($house_builder_units == "metric")
+end
+
+def parameter_changed(name)
+	# implement in subclass to handle parameter changes
+end
+
 # allow direct access to option table as if they were attributes
 def new_member(name)
     unless self.respond_to?(name)
         self.instance_eval %{
             def #{name}; @table[:#{name}]; end
-            def #{name}=(x); @table[:#{name}] = x; end
+            def #{name}=(x); if (@table[:#{name}] != x); @table[:#{name}] = x; parameter_changed('#{name}'); end; end
         }
     end
+end
+
+def self.set_global_option(name, value)
+	if (is_metric())
+		GLOBAL_OPTIONS_METRIC[name] = value
+	else
+		GLOBAL_OPTIONS_IMPERIAL[name] = value
+	end
+end
+
+def self.get_global_option(name)
+	if (is_metric())
+		return GLOBAL_OPTIONS_METRIC[name]
+	else
+		return GLOBAL_OPTIONS_IMPERIAL[name]
+	end
 end
 
 # update object hash table with applicable global options
 def apply_global_options(hashtbl)
     classname = self.class.to_s.downcase
+
+	if (is_metric())
+		options = GLOBAL_OPTIONS_METRIC
+	else
+		options = GLOBAL_OPTIONS_IMPERIAL
+	end
     
-    GLOBAL_OPTIONS.keys.each do |key|
+    options.keys.each do |key|
         parts = key.split('.')
         key_class = ''
         if (parts.length == 2)
@@ -102,14 +230,13 @@ def apply_global_options(hashtbl)
             newkey = key
         end
         if (hashtbl.has_key?(newkey))
-            hashtbl[newkey] = GLOBAL_OPTIONS[key]
+            hashtbl[newkey] = options[key]
         end
     end
 end
 
 
 # constants
-STUD_THICKNESS = 1.5 if not defined?(STUD_THICKNESS)
 GABLE_ROOF = 'gable' if not defined?(GABLE_ROOF)
 SHED_ROOF = 'shed' if not defined?(SHED_ROOF)
 COMMON_RAFTER = 'common' if not defined?(COMMON_RAFTER)
@@ -173,13 +300,11 @@ end
 
 # get the object properties from the group's attriibute table
 def get_options_from_drawing(group)
-    print "options from drawing: " if $VERBOSE
+    puts "options from drawing: " if $VERBOSE
     table.keys.each do |key|
         value = group.get_attribute('einfo', key.to_s)
-        if (value)
-            table[key] = value 
-            print key.to_s + " = " + value.to_s + ", " if $VERBOSE
-        end
+        table[key] = value 
+		puts "#{key} = #{value}" if $VERBOSE
     end
     puts if $VERBOSE
 end
@@ -232,9 +357,19 @@ JOIST_DATA = {
     'TJI560' => [ 3.5, 0.4575, 1.375 ],
 }.freeze if not defined? JOIST_DATA
 
+JOIST_DATA_METRIC = {
+    # top width, web width, top height
+    'TJI110' => [ 45.mm, 10.mm, 35.mm ],
+    'TJI210' => [ 50.mm, 10.mm, 35.mm ],
+    'TJI230' => [ 58.mm, 10.mm, 35.mm ],
+    'TJI360' => [ 58.mm, 12.mm, 35.mm ],
+    'TJI560' => [ 90.mm, 12.mm, 35.mm ],
+}.freeze if not defined? JOIST_DATA
+
 def initialize(options = {})
+	super()
 	default_options = {
-		'style' => '2x4',
+		'style' => $hb_defaults[$house_builder_units]['global']['style'],
 		'origin' => Geom::Point3d.new,
 		'orientation' => TOP,
 		'rotation' => 0,
@@ -256,6 +391,16 @@ def self.length_from_style(style)
     return nil
 end
 
+# get nominal thickness from style
+def self.thickness_from_style(style)
+    if (style =~ /^(\d+)\s*x\s*(\d+)$/)
+        #puts "return 1" + $1.to_s
+        #puts "return 2" + $2.to_s
+        return $1
+    end
+    return nil
+end
+
 # get nominal width from style
 def self.width_from_style(style)
     #puts 'style = ' + style
@@ -266,11 +411,13 @@ def self.width_from_style(style)
 end
 
 # return the actual dimension of a piece of lumber given it nominal dimension
-def self.size_from_nominal(model, nominal)
+def self.size_from_nominal(model, nominal, metric=false)
     # puts 'nominal = ' + nominal.to_s
     size = nominal.to_f
     
-    if (model == "common")
+	if (metric)
+		size = size.mm
+    elsif (model == "common")
         # subtract 1/2 inch if size is an integer
         if ((size - size.to_i) == 0)
             size -= 0.5
@@ -288,37 +435,40 @@ def self.size_from_nominal(model, nominal)
 end
 
 # draw a board standing on end
-def self.draw_vert_lumber(pt, st, h, on_layer, r = 90.degrees)
+def self.draw_vert_lumber(pt, st, h, on_layer, is_metric, r = 90.degrees)
     lumber = Lumber.new('style' => st,
                         'depth' => h,
                         'origin' => pt,
                         'rotation' => r,
                         'orientation' => Lumber::TOP,
-                        'layer' => on_layer)
+                        'layer' => on_layer,
+						'metric'=> is_metric)
 	group = lumber.draw
 	return group
 end
 
 # draw a board laying flat
-def self.draw_hort_lumber(pt, st, l, on_layer, r = 0)
+def self.draw_hort_lumber(pt, st, l, on_layer, is_metric, r = 0)
     lumber = Lumber.new('style' => st,
                         'depth' => l,
                         'origin' => pt,
                         'rotation' => r,
                         'orientation' => Lumber::FRONT,
-                        'layer' => on_layer)
+                        'layer' => on_layer,
+						'metric'=> is_metric)
 	group = lumber.draw
 	return group
 end
 
 # draw non-rectangular lumber
-def self.draw_profile_lumber(pt, points, depth, on_layer)
+def self.draw_profile_lumber(pt, points, depth, on_layer, is_metric)
     lumber = Lumber.new('profile' => points,
                         'depth' => depth,
                         'origin' => pt,
                         'style' => 'custom', 
                         'orientation' => Lumber::FRONT,
-                        'layer' => on_layer)
+                        'layer' => on_layer,
+						'metric'=>is_metric)
 	group = lumber.draw
 	return group
 end
@@ -334,7 +484,12 @@ def ibeam_profile_from_style(model, height)
     #  b+-  -+k         
     #  a+----+l
     #
-    dim = JOIST_DATA[model]
+	if is_metric()
+		dim = JOIST_DATA_METRIC[model]
+	else
+		dim = JOIST_DATA[model]
+	end
+
     return nil if not dim
     center = dim[0]/2
     
@@ -368,8 +523,8 @@ def profile_from_style
     # puts "style = " + style
     if (style =~ /^(\d+)\s*x\s*(\d+)$/)
         # common lumber (e.g. 2x4)
-        width = Lumber.size_from_nominal("common", $1)
-        height = Lumber.size_from_nominal("common", $2)
+        width = Lumber.size_from_nominal("common", $1, is_metric())
+        height = Lumber.size_from_nominal("common", $2, is_metric())
         # puts "orientation = " + orientation.to_s
         case orientation
         when TOP
@@ -391,7 +546,7 @@ def profile_from_style
         end
     elsif (style =~ /^(TJI\d+)\s*x\s*(\d+)$/)
         model = $1
-        height = Lumber.size_from_nominal($model, $2)
+        height = Lumber.size_from_nominal($model, $2, is_metric())
         profile_points = ibeam_profile_from_style(model, height)
     elsif (style == "custom")
         profile_points = profile
@@ -540,6 +695,7 @@ end # class Lumber
 class Building < BaseBuilder
 
 def initialize(options = {})
+	super()
 	default_options = {
 		'name' => '',
 		'type' => 'building',
@@ -582,15 +738,15 @@ class Wall < BaseBuilder
 attr_reader :stud_height, :bottom_plate_group, :objects
 
 def initialize(options = {})
+	super()
 	default_options = {
-		'header_height' => 80,
 		'type' => 'wall',
-		'style' => '2x4',
+		'style' => $hb_defaults[$house_builder_units]['wall']['style'],
 		'name' => '',
-		'width' => 3.5,
-		'height' => 8.feet,
+		'width' => 0, # computed below
+		'height' => $hb_defaults[$house_builder_units]['wall']['height'],
 		'length' => 0,
-		'stud_spacing' => 16,
+		'stud_spacing' => $hb_defaults[$house_builder_units]['wall']['stud_spacing'],
 		'on_center_spacing' => 'true',
 		'origin' => Geom::Point3d.new,
 		'endpt' => Geom::Point3d.new,
@@ -598,10 +754,11 @@ def initialize(options = {})
 		'bottom_plate_count' => 1,
 		'top_plate_count' => 2,
 		'first_stud_offset' => 0,
-		'justify' => 'right',
+		'justify' => $hb_defaults[$house_builder_units]['wall']['justify'],
 		'layer' => nil,
 		'object_names' => ''
 	}
+
 	apply_global_options(default_options)
 	default_options.update(options)
 	super(default_options)
@@ -609,8 +766,13 @@ def initialize(options = {})
 	if (self.name.length == 0)
 		self.name = BaseBuilder.unique_name("wall")
 	end
-	@stud_z_thickness = STUD_THICKNESS
-	self.width = Lumber.size_from_nominal("common", Lumber.length_from_style(self.style));
+	@stud_z_thickness = Lumber.size_from_nominal("common", Lumber.thickness_from_style(self.style), is_metric());
+	self.width = Lumber.size_from_nominal("common", Lumber.length_from_style(self.style), is_metric());
+end
+
+def parameter_changed(name)
+	@stud_z_thickness = Lumber.size_from_nominal("common", Lumber.thickness_from_style(self.style), is_metric());
+	self.width = Lumber.size_from_nominal("common", Lumber.length_from_style(self.style), is_metric());
 end
 
 def self.create_from_drawing(group)
@@ -622,10 +784,10 @@ def self.create_from_drawing(group)
         type = entity.get_attribute('einfo', 'type')
         case type 
         when 'window'
-            window = Window.create_from_drawing(entity)
+            window = Window.create_from_drawing(wall,entity)
             wall.add(window)
         when 'door'
-            door = Door.create_from_drawing(entity)
+            door = Door.create_from_drawing(wall,entity)
             wall.add(door)
         else
             UI.messagebox "unknown type: " + type + " for " + name
@@ -678,47 +840,53 @@ def draw
 	entities = []
 
 	@stud_height = height
-	self.width = Lumber.size_from_nominal("common", Lumber.length_from_style(style))
-	
 	# bottom plate
 	for i in 1..bottom_plate_count
 		@bottom_plate_group = build_plate(pt)
 		entities.push(@bottom_plate_group)
-		pt.z += STUD_THICKNESS
+		pt.z += @stud_z_thickness
 	end
 	full_size = [[pt.z, nil]]
 	
 	# top plate
 	pt.z = height
 	for i in 1..top_plate_count
-	    pt.z -= @stud_z_thickness
-		entities.push(build_top_plate(pt))
-		@stud_height -= STUD_THICKNESS
+		case self.class.to_s
+		when "HouseBuilder::GableWall"
+			pt.z -= @top_plate_z
+			entities.push(build_top_plate(pt))
+			@stud_height -= @top_plate_z
+		else
+			#Rectangular wall
+			pt.z -= @stud_z_thickness
+			entities.push(build_top_plate(pt))
+			@stud_height -= @stud_z_thickness
+		end
 	end
 
 
 	# fill in studs
-	pt.z = 0 + STUD_THICKNESS*bottom_plate_count
+	pt.z = 0 + @stud_z_thickness*bottom_plate_count
 	y = 0
 	iteration = 0
-	while (y < length - 2*STUD_THICKNESS)
+	while (y < length - 2*@stud_z_thickness)
 		pt.y = y
 		entities += build_stud(pt.y, full_size, nil)
 		y += stud_spacing
 		if (iteration == 0 && on_center_spacing == 'true')
-			y -= STUD_THICKNESS/2 # MIKE MORRISON changed to on-center studs
+			y -= @stud_z_thickness/2 # MIKE MORRISON changed to on-center studs
 		end
 		iteration += 1
 	end
 
 	# draw the last stud
-	if ((y < length - STUD_THICKNESS) && (y > length - 2*STUD_THICKNESS))
-		pt.y = length - STUD_THICKNESS*2
+	if ((y < length - @stud_z_thickness) && (y > length - 2*@stud_z_thickness))
+		pt.y = length - @stud_z_thickness*2
 		entities += build_stud(pt.y, full_size, nil)
 	end
-	pt.y = length - STUD_THICKNESS;
+	pt.y = length - @stud_z_thickness
 	entities += build_stud(pt.y, full_size, nil)
-	pt.y += STUD_THICKNESS
+	pt.y += @stud_z_thickness
 	endpt.set!(pt.x.to_f, pt.y.to_f, 0)
     
 	# draw any windows or doors   
@@ -828,7 +996,7 @@ end
 
 # draw a bottom plate
 def build_plate(pt)
-    lumber = Lumber.new(fill_options(%w[style layer],
+    lumber = Lumber.new(fill_options(%w[style layer metric],
                         'depth' => length,
                         'origin' => pt,
                         'rotation' => 90.degrees,
@@ -869,7 +1037,7 @@ def build_stud(y, pts, obj)
     pts.each do |pt|
         orig_pt = Geom::Point3d.new(0, y, pt[0])
         height = pt[1] - pt[0]
-        lumber = Lumber.new(fill_options(%w[style layer],
+        lumber = Lumber.new(fill_options(%w[style layer metric],
                             'depth' => height,
                             'origin' => orig_pt, 
                             'rotation' => 90.degrees,
@@ -927,21 +1095,17 @@ end # class Wall
 class GableWall < Wall
 
 def initialize(options = {})
+	super()
 	default_options = { 
-		'header_height' => 80,
 		'name' => '',
 		'type' => 'GableWall',
-		'width' => 3.5,
-		'height' => 8.feet,
 		'length' => 0,
-		'stud_spacing' => 16,
-		'on_center_spacing' => 'true',
 		'origin' => Geom::Point3d.new,
 		'angle' => 0,
 		'bottom_plate_count' => 1,
 		'top_plate_count' => 1,
 		'first_stud_offset' => 0,
-		'pitch' => 6.0,
+		'pitch' => $hb_defaults[$house_builder_units]['global']['pitch'],
 		'roof_type' => GABLE_ROOF,
 		'layer' => nil,
 	}
@@ -949,7 +1113,6 @@ def initialize(options = {})
 	default_options.update(options)
 	super(default_options)
 end
-
 
 def self.create_from_drawing(group)
     wall = GableWall.new()
@@ -973,12 +1136,17 @@ def self.create_from_drawing(group)
 end
 
 def draw
-    @roof_angle = Math.atan(pitch.to_f/12.0)
+	@roof_angle = Math.atan(pitch.to_f/12.0)	
+	if (is_metric())
+		roof_angle = pitch.degrees
+	end
+    
 	# compute start and end of top line of top plate
     start_point = Geom::Point3d.new(0, 0, height)
     # compute the vertical height of the end cut of the top plate
-    @stud_z_thickness = STUD_THICKNESS/Math.cos(@roof_angle)
-    h = @stud_z_thickness*top_plate_count
+    @stud_z_thickness = Lumber.size_from_nominal("common", Lumber.thickness_from_style(self.style), is_metric())
+	@top_plate_z = @stud_z_thickness/Math.cos(@roof_angle)
+    h = @top_plate_z*top_plate_count
     base_start_point = Geom::Point3d.new(0, 0, height - h)
     # compute start and end of bottom line of top plate
     case roof_type
@@ -1055,7 +1223,7 @@ end
 
 # draw a sloped top plate
 def build_top_plate(pt)
-    h = @stud_z_thickness
+    h = @top_plate_z
     case roof_type
     when SHED_ROOF
     	a = Geom::Point3d.new(0, 0, 0)
@@ -1070,6 +1238,7 @@ def build_top_plate(pt)
                             'origin' => newpt,
                             'style' => 'custom', 
                             'orientation' => SIDE,
+							'metric' => is_metric(),
                             'layer' => layer)
     	group = lumber.draw
     when GABLE_ROOF
@@ -1085,6 +1254,7 @@ def build_top_plate(pt)
                             'origin' => newpt,
                             'style' => 'custom', 
                             'orientation' => SIDE,
+							'metric' => is_metric(),
                             'layer' => layer)
     	entities.push(lumber.draw())
     	a = Geom::Point3d.new(0, 0, 0)
@@ -1098,6 +1268,7 @@ def build_top_plate(pt)
                             'origin' => newpt,
                             'style' => 'custom', 
                             'orientation' => SIDE,
+							'metric' => is_metric(),
                             'layer' => layer)
     	entities.push(lumber.draw())
     	model = Sketchup.active_model
@@ -1138,7 +1309,7 @@ def build_stud(y, points, obj)
         if ((pt != pts.last) || (pt[1] < stud_height(pt[0], y)))
             orig_pt = Geom::Point3d.new(0, y, pt[0])
             height = pt[1] - pt[0]
-            lumber = Lumber.new(fill_options(%w[style layer],
+            lumber = Lumber.new(fill_options(%w[style layer metric],
                                 'depth' => height,
                                 'origin' => orig_pt, 
                                 'rotation' => 90.degrees,
@@ -1146,12 +1317,12 @@ def build_stud(y, points, obj)
         	entities.push(lumber.draw)
         else
         	left_stud_height = stud_height(pt[0], y)
-        	right_stud_height = stud_height(pt[0], y + STUD_THICKNESS)
+        	right_stud_height = stud_height(pt[0], y + @stud_z_thickness)
         	# puts "left, right = #{left_stud_height} #{right_stud_height}"
         	a = Geom::Point3d.new(0, 0, 0)
         	b = Geom::Point3d.new(0, 0, left_stud_height)
-        	c = Geom::Point3d.new(0, STUD_THICKNESS, right_stud_height)
-        	d = Geom::Point3d.new(0, STUD_THICKNESS, 0)
+        	c = Geom::Point3d.new(0, @stud_z_thickness, right_stud_height)
+        	d = Geom::Point3d.new(0, @stud_z_thickness, 0)
         	profile = [ a, b, c, d ]
             orig_pt = Geom::Point3d.new(0, y, pt[0])
             lumber = Lumber.new('profile' => profile,
@@ -1159,6 +1330,7 @@ def build_stud(y, points, obj)
                                 'origin' => orig_pt,
                                 'style' => 'custom', 
                                 'orientation' => SIDE,
+								'metric' => is_metric(),
                                 'layer' => layer)
         	entities.push(lumber.draw)
         end
@@ -1195,14 +1367,14 @@ end	# class GableWall
 class Opening < BaseBuilder
 def adjust_stud_for_opening(y, pts, left, right, bottom, top, keep)
     # if there is no overlap, return original points
-    return pts if ((y < left - STUD_THICKNESS) || (y > right))
+    return pts if ((y < left - @stud_z_thickness) || (y > right))
     # if overlap with king stud, return nil
     # puts "adjust: y = " + y.to_s
     if (not keep)
-        return nil if (((y > left - STUD_THICKNESS) && (y < left + STUD_THICKNESS)) || ((y > right - 2*STUD_THICKNESS) && (y < right)))
+        return nil if (((y > left - @stud_z_thickness) && (y < left + @stud_z_thickness)) || ((y > right - 2*@stud_z_thickness) && (y < right)))
     end
     # return original points if it overlaps the king stud
-    return pts if ((y <= left) || (y >= right - STUD_THICKNESS))
+    return pts if ((y <= left) || (y >= right - @stud_z_thickness))
                      
     # trim stud around opening
     # puts "adjust: opening = l,r,t,b = #{left}, #{right}, #{top}, #{bottom}"
@@ -1222,7 +1394,7 @@ def adjust_stud_for_opening(y, pts, left, right, bottom, top, keep)
             else 
                 # overlaps opening
                 # don't display bottom segment if it is an opening stud or it overlaps the trimmer
-                if (not (keep || (((y > left) && (y < left + STUD_THICKNESS)) || (y > right - STUD_THICKNESS) && (y < right))))
+                if (not (keep || (((y > left) && (y < left + @stud_z_thickness)) || (y > right - @stud_z_thickness) && (y < right))))
                     new_pts.push([b, bottom]) 
                 end
                 new_pts.push([top, t])
@@ -1246,16 +1418,17 @@ end # class Opening
 # options:
 class Window < Opening
 
-def initialize(options = {})
+def initialize(wall, options = {})
+	super()
 	default_options = { 
-		'header_height' => 80,
+		'header_height' => $hb_defaults[$house_builder_units]['window']['header_height'],
 		'name' => '',
 		'type' => 'window',
 		'center_offset' => 0,
-		'width' => 5.feet,
-		'height' => 3.feet,
-		'header_style' => '4x8',
-		'sill_style' => '2x4',
+		'width' => $hb_defaults[$house_builder_units]['window']['width'],
+		'height' => $hb_defaults[$house_builder_units]['window']['height'],
+		'header_style' => $hb_defaults[$house_builder_units]['global']['header_style'],
+		'sill_style' => $hb_defaults[$house_builder_units]['window']['sill_style'],
 		'justify' => 'left',
 		'rough_opening' => 0,
 		'layer' => nil,
@@ -1266,24 +1439,26 @@ def initialize(options = {})
 	if (self.name.length == 0)
 		self.name = BaseBuilder.unique_name("window")
 	end
+	@wall = wall
+	@stud_z_thickness = Lumber.size_from_nominal("common", Lumber.thickness_from_style(wall.style), is_metric());
 end
 
 # create a window object using the properties stored in the drawing
-def self.create_from_drawing(group)
-    window = Window.new()
+def self.create_from_drawing(wall, group)
+    window = Window.new(wall)
     window.get_options_from_drawing(group)
     return window
 end
 
 def adjust_stud(y, pts, keep)
-    total_width = width + 2*rough_opening + 4*STUD_THICKNESS
+    total_width = width + 2*rough_opening + 4*@stud_z_thickness
     left = center_offset - total_width/2
     right = left + total_width
                  
 	header_dimension_height = Lumber.size_from_nominal("common", 
-	        Lumber.length_from_style(header_style))
+	        Lumber.length_from_style(header_style),is_metric())
 	sill_dimension_height = Lumber.size_from_nominal("common", 
-	        Lumber.width_from_style(sill_style))
+	        Lumber.width_from_style(sill_style),is_metric())
     actual_header_height = header_height + rough_opening
     bottom_of_sill = actual_header_height - height - sill_dimension_height - 2*rough_opening
     top_of_header = actual_header_height + header_dimension_height
@@ -1296,15 +1471,15 @@ def draw(wall)
 	model = Sketchup.active_model
 	
 	header_dimension_height = Lumber.size_from_nominal("common", 
-	        Lumber.length_from_style(header_style))
+	        Lumber.length_from_style(header_style),is_metric())
 	sill_dimension_height = Lumber.size_from_nominal("common", 
-	        Lumber.width_from_style(sill_style))	
+	        Lumber.width_from_style(sill_style),is_metric())	
 
-	total_width = width + 2*rough_opening + 4*STUD_THICKNESS
+	total_width = width + 2*rough_opening + 4*@stud_z_thickness
 	actual_header_height = header_height + rough_opening
 	left = center_offset - total_width/2
 	y = left
-	bottom = wall.bottom_plate_count*STUD_THICKNESS
+	bottom = wall.bottom_plate_count*@stud_z_thickness
 	pt = Geom::Point3d.new(0, y, bottom)
 	cripple_z = actual_header_height + header_dimension_height
 	full_size = [[bottom, nil]]
@@ -1313,25 +1488,25 @@ def draw(wall)
 	entities += wall.build_stud(y, full_size, self)
 
 	# draw the left trimmer stud and cripple
-	y += STUD_THICKNESS
+	y += @stud_z_thickness
 	entities += wall.build_stud(y, [[bottom, actual_header_height]], self)
 
 	# draw the header
     pt.y = y
 	pt.z = actual_header_height
-	entities.push(Lumber.draw_hort_lumber(pt, header_style, width + 2*STUD_THICKNESS, layer))
+	entities.push(Lumber.draw_hort_lumber(pt, header_style, width + 2*@stud_z_thickness, layer, is_metric()))
 
 	# draw the sill
-	pt.y += STUD_THICKNESS
+	pt.y += @stud_z_thickness
 	pt.z = actual_header_height - height - sill_dimension_height - 2*rough_opening
-	entities.push(Lumber.draw_hort_lumber(pt, sill_style, width, layer, 90.degrees))
+	entities.push(Lumber.draw_hort_lumber(pt, sill_style, width, layer, is_metric(), 90.degrees))
 
 	# draw the right trimmer stud and cripple
-    y += width + STUD_THICKNESS
+    y += width + @stud_z_thickness
 	entities += wall.build_stud(y, [[bottom, actual_header_height]], self)
 
 	# draw the left king stud
-	y += STUD_THICKNESS
+	y += @stud_z_thickness
 	entities += wall.build_stud(y, full_size, self)
 
 	group = model.active_entities.add_group(entities);
@@ -1393,17 +1568,18 @@ end
 # options:
 class Door < Opening
 
-def initialize(options = {})
+def initialize(wall, options = {})
+	super()
 	default_options = { 
-		'header_height' => 80,
+		'header_height' => $hb_defaults[$house_builder_units]['door']['header_height'],
 		'name' => '',
 		'type' => 'door',
 		'center_offset' => 0,
-		'width' => 3.feet,
-		'height' => 80,
-		'header_style' => '4x8',
+		'width' => $hb_defaults[$house_builder_units]['door']['width'],
+		'height' => $hb_defaults[$house_builder_units]['door']['height'],
+		'header_style' => $hb_defaults[$house_builder_units]['global']['header_style'],
 		'justify' => 'left',
-		'rough_opening' => 0.5,
+		'rough_opening' => $hb_defaults[$house_builder_units]['door']['rough_opening'],
 		'layer' => nil,
 	}
 	apply_global_options(default_options)
@@ -1412,22 +1588,24 @@ def initialize(options = {})
 	if (self.name.length == 0)
 		self.name = BaseBuilder.unique_name("door")
 	end
+	@wall = wall
+	@stud_z_thickness = Lumber.size_from_nominal("common", Lumber.thickness_from_style(wall.style), is_metric());
 end
 
 # create a door object from properties stored in the drawing
-def self.create_from_drawing(group)
-    door = Door.new()
+def self.create_from_drawing(wall, group)
+    door = Door.new(wall)
     door.get_options_from_drawing(group)
     return door
 end
 
 def adjust_stud(y, pts, keep)
-    total_width = width + 2*rough_opening + 4*STUD_THICKNESS
+    total_width = width + 2*rough_opening + 4*@stud_z_thickness
     left = center_offset - total_width/2
     right = left + total_width
                  
 	header_dimension_height = Lumber.size_from_nominal("common", 
-	        Lumber.length_from_style(header_style))
+	        Lumber.length_from_style(header_style),is_metric())
     actual_header_height = header_height + rough_opening
     top_of_header = actual_header_height + header_dimension_height
     bottom = header_height - height
@@ -1440,12 +1618,12 @@ def draw(wall)
 	entities = []	
 
 	header_dimension_height = Lumber.size_from_nominal("common", 
-	        Lumber.length_from_style(header_style))
-	total_width = width + 2*rough_opening + 4*STUD_THICKNESS
+	        Lumber.length_from_style(header_style),is_metric())
+	total_width = width + 2*rough_opening + 4*@stud_z_thickness
 	actual_header_height = header_height + rough_opening
 	left = center_offset - total_width/2
 	y = left
-	bottom = wall.bottom_plate_count*STUD_THICKNESS
+	bottom = wall.bottom_plate_count*@stud_z_thickness
 	pt = Geom::Point3d.new(0, y, bottom)
 	cripple_z = actual_header_height + header_dimension_height
 	full_size = [[bottom, nil]]
@@ -1454,25 +1632,25 @@ def draw(wall)
 	entities += wall.build_stud(y, full_size, self)
 
 	# draw the left trimmer stud and cripple
-	y += STUD_THICKNESS
+	y += @stud_z_thickness
 	entities += wall.build_stud(y, [[bottom, actual_header_height]], self)
 
 	# draw the header
     pt.y = y
 	pt.z = actual_header_height
-	entities.push(Lumber.draw_hort_lumber(pt, header_style, width + 2*STUD_THICKNESS + 2*rough_opening, layer))
+	entities.push(Lumber.draw_hort_lumber(pt, header_style, width + 2*@stud_z_thickness + 2*rough_opening, layer, is_metric()))
 
 	# draw the right trimmer stud and cripple
-    y += width + STUD_THICKNESS + 2*rough_opening
+    y += width + @stud_z_thickness + 2*rough_opening
 	entities += wall.build_stud(y, [[bottom, actual_header_height]], self)
 
 	# draw the left king stud
-	y += STUD_THICKNESS
+	y += @stud_z_thickness
 	entities += wall.build_stud(y, full_size, self)
 
 	# cut out the bottom plate
-	first_corner = Geom::Point3d::new(0, left + 2*STUD_THICKNESS,
-		wall.bottom_plate_count*STUD_THICKNESS)
+	first_corner = Geom::Point3d::new(0, left + 2*@stud_z_thickness,
+		wall.bottom_plate_count*@stud_z_thickness)
 	second_corner = Geom::Point3d::new(wall.width, first_corner.y + width + 2*rough_opening,
 		first_corner.z)
 	Lumber.cut(wall.bottom_plate_group, first_corner, second_corner, -first_corner.z)
@@ -1556,13 +1734,14 @@ end
 class Roof < BaseBuilder
 
 def initialize(wall, options = {})
+	super()
 	default_options = {
 		'name' => '',
 		'type' => 'roof',
-		'joist_spacing' => 24,
-		'on_center_spacing' => 'true',
-		'style' => '2x8',
-		'ridge_style' => '2x10',
+		'joist_spacing' => $hb_defaults[$house_builder_units]['roof']['joist_spacing'],
+		'on_center_spacing' => $hb_defaults[$house_builder_units]['global']['on_center_spacing'],
+		'style' => $hb_defaults[$house_builder_units]['roof']['style'],
+		'ridge_style' => $hb_defaults[$house_builder_units]['roof']['ridge_style'],
 		'roof_style' => GABLE_ROOF,
 		'framing' => COMMON_RAFTER,
 		'joist_type' => nil,
@@ -1570,12 +1749,13 @@ def initialize(wall, options = {})
 		'corner2' => [0, 0, 0],
 		'corner3' => [0, 0, 0],
 		'corner4' => [0, 0, 0],
-		'pitch' => 6.0,			# 6/12 pitch
-		'overhang' => 18,		# 1.5 foot overhang
-        'rake_overhang' => 12,
-        'shed_ridge_overhang' => 0,
+		'pitch' => $hb_defaults[$house_builder_units]['global']['pitch'],
+		'overhang' => $hb_defaults[$house_builder_units]['roof']['overhang'],
+		'rake_overhang' => $hb_defaults[$house_builder_units]['roof']['rake_overhang'],
+		'shed_ridge_overhang' => $hb_defaults[$house_builder_units]['roof']['shed_ridge_overhang'],
 		'layer' => nil,
 	}
+
 	apply_global_options(default_options)
 	default_options.update(options)
 	super(default_options)
@@ -1583,6 +1763,7 @@ def initialize(wall, options = {})
 		self.name = BaseBuilder.unique_name("roof")
 	end
 	@wall_width = wall.width
+	@stud_z_thickness = Lumber.size_from_nominal("common", Lumber.thickness_from_style(self.style), is_metric());
 end
 
 # create a roof object from properies stored in the drawing
@@ -1639,15 +1820,18 @@ def self.rectangle_setup(corner1, corner2, corner3, corner4)
     return corner_a, corner_b, root, c2r, angle, l_to_r
 end
 
-def draw 
+def draw
 	@roof_angle = Math.atan(1.0*pitch/12.0)
+	if (is_metric())
+		@roof_angle = pitch.degrees
+	end
 	puts "drawing roof " + name if $VERBOSE
 	model = Sketchup.active_model
 	entities = []
 	is_gable = (roof_style == GABLE_ROOF)
 	
 	l = Lumber.length_from_style(style)
-	@joist_width = Lumber.size_from_nominal("common", l)
+	@joist_width = Lumber.size_from_nominal("common", l,is_metric())
 	
 	(corner_a, corner_b, root, rotation_point, angle, left_to_right) = 
 	        Roof.rectangle_setup(corner1, corner2, corner3, corner4)
@@ -1672,9 +1856,9 @@ def draw
 
 	# draw the overhanging rafter
 	pt.y = y - rake_overhang
-	ridge_start = pt.y + STUD_THICKNESS
-	rafter_length = x_width + STUD_THICKNESS;
-	rafter_length -= STUD_THICKNESS/2 if (is_gable)
+	ridge_start = pt.y + @stud_z_thickness
+	rafter_length = x_width + @stud_z_thickness;
+	rafter_length -= @stud_z_thickness/2 if (is_gable)
 	if (left_to_right)
     	pt.x = corner_a.x
     	entities.push(build_rafter(pt, rafter_length, 1, false))
@@ -1688,7 +1872,7 @@ def draw
     end
 
 	# fill in the rafters that rest on the walls
-	while (y < y_length - 2*STUD_THICKNESS)
+	while (y < y_length - 2*@stud_z_thickness)
 		pt.y = y
 		if (left_to_right)
     		pt.x = corner_a.x
@@ -1703,8 +1887,8 @@ def draw
     ridge_point = @peak;
     
 	# draw the last rafter
-	if ((y > y_length - 2*STUD_THICKNESS) && (y < y_length - STUD_THICKNESS))
-		pt.y = y_length - 2*STUD_THICKNESS
+	if ((y > y_length - 2*@stud_z_thickness) && (y < y_length - @stud_z_thickness))
+		pt.y = y_length - 2*@stud_z_thickness
 		if (left_to_right)
     		pt.x = corner_a.x
     		entities.push(build_rafter(pt, x_width, 1, true))
@@ -1714,7 +1898,7 @@ def draw
     		entities.push(build_rafter(pt, x_width, -1, true))
     	end
 	end
-	pt.y = y_length - STUD_THICKNESS
+	pt.y = y_length - @stud_z_thickness
 	if (left_to_right)
 		pt.x = corner_a.x
 		entities.push(build_rafter(pt, x_width, 1, true))
@@ -1725,7 +1909,7 @@ def draw
 	end
 	
 	# draw the overhanging rafter
-	pt.y = y_length + rake_overhang - STUD_THICKNESS
+	pt.y = y_length + rake_overhang - @stud_z_thickness
 	ridge_end = pt.y
 	if (left_to_right)
     	pt.x = corner_a.x
@@ -1738,16 +1922,16 @@ def draw
 
     # draw the ridge
     if (right_to_left)
-        ridge_point.x -= STUD_THICKNESS
+        ridge_point.x -= @stud_z_thickness
     end
     ridge_point.y = ridge_start;
-    ridge_height = Lumber.size_from_nominal("common", Lumber.length_from_style(ridge_style))
+    ridge_height = Lumber.size_from_nominal("common", Lumber.length_from_style(ridge_style),is_metric())
     ridge_point.z -= ridge_height
     ridge_length = ridge_end - ridge_start
-    entities.push(Lumber.draw_hort_lumber(ridge_point, ridge_style, ridge_length, layer))  # TODO
+    entities.push(Lumber.draw_hort_lumber(ridge_point, ridge_style, ridge_length, layer, is_metric()))  # TODO
 
     # draw the facia
-    facia_length = ridge_length + 2*STUD_THICKNESS
+    facia_length = ridge_length + 2*@stud_z_thickness
     if (left_to_right)
         entities.push(draw_facia(left_tail, -@roof_angle, facia_length))
     end
@@ -1775,20 +1959,20 @@ def draw
     if (left_to_right)
         # todo fix x, z
         corners = [
-            Geom::Point3d.new(x_width, ridge_start - STUD_THICKNESS, @peak.z),
-            Geom::Point3d.new(x_width, ridge_end + STUD_THICKNESS, @peak.z),
-            Geom::Point3d.new(left_top_of_tail.x, ridge_end + STUD_THICKNESS, @top_of_tail.z),
-            Geom::Point3d.new(left_top_of_tail.x, ridge_start - STUD_THICKNESS, @top_of_tail.z),
+            Geom::Point3d.new(x_width, ridge_start - @stud_z_thickness, @peak.z),
+            Geom::Point3d.new(x_width, ridge_end + @stud_z_thickness, @peak.z),
+            Geom::Point3d.new(left_top_of_tail.x, ridge_end + @stud_z_thickness, @top_of_tail.z),
+            Geom::Point3d.new(left_top_of_tail.x, ridge_start - @stud_z_thickness, @top_of_tail.z),
         ]
         # puts "l_to_r corners = " + corners.inspect
         entities.add_face(corners)
     end
     if (right_to_left)
         corners = [
-            Geom::Point3d.new(x_width, ridge_start - STUD_THICKNESS, @peak.z),
-            Geom::Point3d.new(x_width, ridge_end + STUD_THICKNESS, @peak.z),
-            Geom::Point3d.new(@top_of_tail.x, ridge_end + STUD_THICKNESS, @top_of_tail.z),
-            Geom::Point3d.new(@top_of_tail.x, ridge_start - STUD_THICKNESS, @top_of_tail.z),
+            Geom::Point3d.new(x_width, ridge_start - @stud_z_thickness, @peak.z),
+            Geom::Point3d.new(x_width, ridge_end + @stud_z_thickness, @peak.z),
+            Geom::Point3d.new(@top_of_tail.x, ridge_end + @stud_z_thickness, @top_of_tail.z),
+            Geom::Point3d.new(@top_of_tail.x, ridge_start - @stud_z_thickness, @top_of_tail.z),
         ]
         # puts "r_to_l corners = " + corners.inspect
         entities.add_face(corners)
@@ -1819,6 +2003,7 @@ def draw_facia(pt, angle, length)
                         'origin' => pt,
                         'rotation' => 0,
                         'orientation' => FRONT,
+						'metric' => is_metric(),
                         'layer' => layer)
 	group = lumber.draw
 
@@ -1846,12 +2031,12 @@ def build_rafter(origin, x_width, direction, has_birdsmouth)
 
 	# rafter width is the horizontal distance from the roof peak
 	# to the end of the overhang (not including facia)
-	rafter_width = 	x_width + overhang - STUD_THICKNESS/2
+	rafter_width = 	x_width + overhang - @stud_z_thickness/2
 	a = Geom::Point3d.new(0, 0, 0)
 	b = Geom::Point3d.new(0, @joist_width, 0)
 	c = Geom::Point3d.new(direction*rafter_width/Math.cos(@roof_angle), @joist_width, 0)	
 	d = Geom::Point3d.new(c.x - direction*@joist_width*Math.tan(@roof_angle), 0, 0)
-	length_d_to_e = (x_width - @wall_width - STUD_THICKNESS/2)/Math.cos(@roof_angle)
+	length_d_to_e = (x_width - @wall_width - @stud_z_thickness/2)/Math.cos(@roof_angle)
 	e = Geom::Point3d.new(d.x - direction*length_d_to_e, 0, 0)
 	f = Geom::Point3d.new(e.x - direction*@wall_width*Math.cos(@roof_angle), @wall_width*Math.sin(@roof_angle), 0)
 	g = Geom::Point3d.new(f.x - direction*f.y*Math.tan(@roof_angle), 0, 0)
@@ -1865,7 +2050,7 @@ def build_rafter(origin, x_width, direction, has_birdsmouth)
 	end
 	x = Math.sin(@roof_angle)
 	zero = Geom::Point3d.new(0, 0, 0)
-	rafter = Lumber.draw_profile_lumber(zero, points, STUD_THICKNESS, layer)
+	rafter = Lumber.draw_profile_lumber(zero, points, @stud_z_thickness, layer,is_metric())
 	root_point = Geom::Point3d.new(f)
 
 	# now translate the rafter into position
@@ -1902,26 +2087,29 @@ end # class Roof
 #----------------------------- F L O O R ----------------------
 # Draw floor joists or ceiling joists
 class Floor < BaseBuilder
-    
+
 def initialize(options = {})
+	super()
 	default_options = {
 		'name' => '',
 		'type' => 'floor',
-		'joist_spacing' => 24,
-		'on_center_spacing' => 'true',
-		'style' => '2x6',
+		'joist_spacing' => $hb_defaults[$house_builder_units]['floor']['joist_spacing'],
+		'on_center_spacing' => $hb_defaults[$house_builder_units]['global']['on_center_spacing'],
+		'style' => $hb_defaults[$house_builder_units]['floor']['style'],
 		'corner1' => [0, 0, 0],
 		'corner2' => [0, 0, 0],
 		'corner3' => [0, 0, 0],
 		'corner4' => [0, 0, 0],
 		'layer' => nil,
 	}
+
 	apply_global_options(default_options)
 	default_options.update(options)
 	super(default_options)
 	if (self.name.length == 0)
 		self.name = BaseBuilder.unique_name("floor")
 	end
+	@stud_z_thickness = Lumber.size_from_nominal("common", Lumber.thickness_from_style(self.style), is_metric());
 end
 
 # create floor object from properties stored in drawing
@@ -1944,7 +2132,7 @@ def draw
 	y_length = corner_b.y
 	y = 0
 	
-	@joist_thickness = STUD_THICKNESS         # TODO
+	@joist_thickness = @stud_z_thickness
 	@joist_length = x_length
 
 	# fill in the joists
@@ -1988,6 +2176,7 @@ def build_joist(pt)
                         'origin' => pt,
                         'rotation' => 0,
                         'orientation' => SIDE,
+						'metric' => is_metric(),
                         'layer' => layer)
 	group = lumber.draw
     return group
