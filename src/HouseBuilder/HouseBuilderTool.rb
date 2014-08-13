@@ -2028,7 +2028,7 @@ end
 
 #-----------------------------------------------------------------------------
 # Add a menu items
-if (not file_loaded?("HouseBuilderTool.rb"))
+if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
     submenu = UI.menu("Draw").add_submenu("House Builder")
     submenu.add_item("Wall Tool") { Sketchup.active_model.select_tool HouseBuilder::WallTool.new }    
     submenu.add_item("Gable Wall Tool") { Sketchup.active_model.select_tool HouseBuilder::GableWallTool.new }
@@ -2070,6 +2070,304 @@ if (not file_loaded?("HouseBuilderTool.rb"))
             submenu.add_item("Delete Door")           { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "DELETE") }          
         end
     end
+#-----------------------------------------------------------------------------------------------------
+#                                        MENU ITEMS
+#-----------------------------------------------------------------------------------------------------
+	#House builder toolbar
+	#-----------------------------------------------------------------------------------------
+	hb_tb = UI::Toolbar.new("House builder")
+
+	# Global settings
+	cmd = UI::Command.new(("Global settings")) {
+		display_global_options_dialog
+	}
+	cmd.small_icon = "hb_globalsettings_S.png"
+	cmd.large_icon = "hb_globalsettings_L.png"
+	cmd.tooltip = "Change global settings"
+	hb_tb.add_item(cmd)
+
+	hb_tb.add_separator()
+
+	# Floor tool
+	cmd = UI::Command.new(("Floor tool")) { 
+		Sketchup.active_model.select_tool HouseBuilder::FloorTool.new
+	}
+	cmd.small_icon = "hb_floortool_S.png"
+	cmd.large_icon = "hb_floortool_L.png"
+	cmd.tooltip = "Creates a floor."
+	hb_tb.add_item(cmd)
+
+	# Wall tool
+	cmd = UI::Command.new(("Wall tool")) {
+		Sketchup.active_model.select_tool HouseBuilder::WallTool.new
+	}
+	cmd.small_icon = "hb_walltool_S.png"
+	cmd.large_icon = "hb_walltool_L.png"
+	cmd.tooltip = "Creates a wall."
+	hb_tb.add_item(cmd)
+
+	# Gable Wall tool
+	cmd = UI::Command.new(("Gable Wall tool")) {
+		Sketchup.active_model.select_tool HouseBuilder::GableWallTool.new
+	}
+	cmd.small_icon = "hb_gablewalltool_S.png"
+	cmd.large_icon = "hb_gablewalltool_L.png"
+	cmd.tooltip = "Creates a gable wall."
+	hb_tb.add_item(cmd)
+
+	# Roof tool
+	cmd = UI::Command.new(("Roof tool")) {
+		Sketchup.active_model.select_tool HouseBuilder::RoofTool.new
+	}
+	cmd.small_icon = "hb_rooftool_S.png"
+	cmd.large_icon = "hb_rooftool_L.png"
+	cmd.tooltip = "Creates a roof."
+	hb_tb.add_item(cmd)
+
+	hb_tb.add_separator()
+
+	# Change Wall properties
+	cmd = UI::Command.new(("Edit Wall")) {
+		if (check_for_wall_selection)
+			HouseBuilder::EditWallTool.show_prop_dialog 
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_changewallproperties_S.png"
+	cmd.large_icon = "hb_changewallproperties_L.png"
+	cmd.tooltip = "Change Wall properties."
+	hb_tb.add_item(cmd)
+
+	# Move Wall
+	cmd = UI::Command.new(("Move Wall")) {
+		if (check_for_wall_selection)
+			HouseBuilder::EditWallTool.move
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_movewall_S.png"
+	cmd.large_icon = "hb_movewall_L.png"
+	cmd.tooltip = "Move, rotate or extent Wall."
+	hb_tb.add_item(cmd)
+
+	hb_tb.add_separator()
+
+
+	# Insert window
+	cmd = UI::Command.new(("Insert window")) {
+		if wall = (check_for_wall_selection)
+			windowtool = HouseBuilder::WindowTool.new(wall)
+			if windowtool.show_dialog()
+				Sketchup.active_model.select_tool windowtool
+			end
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_addwindow_S.png"
+	cmd.large_icon = "hb_addwindow_L.png"
+	cmd.tooltip = "Insert a window into a wall"
+	hb_tb.add_item(cmd)
+
+	# Change window properties
+	cmd = UI::Command.new(("Change window properties in a wall")) {
+		if wall = (check_for_wall_selection)
+			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "CHANGE_PROPERTIES")
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_changewindowproperties_S.png"
+	cmd.large_icon = "hb_changewindowproperties_L.png"
+	cmd.tooltip = "Change window properties in a wall"
+	hb_tb.add_item(cmd)
+
+	# Move window
+	cmd = UI::Command.new(("Move window in a wall")) {
+		if wall = (check_for_wall_selection)
+			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "MOVE")
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_movewindow_S.png"
+	cmd.large_icon = "hb_movewindow_L.png"
+	cmd.tooltip = "Move window in a wall"
+	hb_tb.add_item(cmd)
+
+	# Delete window
+	cmd = UI::Command.new(("Delete window in a wall")) {
+		if wall = (check_for_wall_selection)
+			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "DELETE")
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_deletewindow_S.png"
+	cmd.large_icon = "hb_deletewindow_L.png"
+	cmd.tooltip = "Delete window in a wall"
+	hb_tb.add_item(cmd)
+
+	hb_tb.add_separator()
+
+	# Insert door
+	cmd = UI::Command.new(("Insert door")) {
+		if wall = (check_for_wall_selection)
+			doortool = HouseBuilder::DoorTool.new(wall)
+			if doortool.show_dialog()
+				Sketchup.active_model.select_tool doortool
+			end
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_adddoor_S.png"
+	cmd.large_icon = "hb_adddoor_L.png"
+	cmd.tooltip = "Insert a door into a wall"
+	hb_tb.add_item(cmd)
+
+	# Change door properties
+	cmd = UI::Command.new(("Change door properties in a wall")) {
+		if wall = (check_for_wall_selection)
+			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "CHANGE_PROPERTIES")
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	} 
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_changedoorproperties_S.png"
+	cmd.large_icon = "hb_changedoorproperties_L.png"
+	cmd.tooltip = "Change door properties in a wall"
+	hb_tb.add_item(cmd)
+
+	# Move door
+	cmd = UI::Command.new(("Move door in a wall")) {
+		if wall = (check_for_wall_selection)
+			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "MOVE")
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_movedoor_S.png"
+	cmd.large_icon = "hb_movedoor_L.png"
+	cmd.tooltip = "Move door in a wall"
+	hb_tb.add_item(cmd)
+
+	# Move door
+	cmd = UI::Command.new(("Delete door in a wall")) {
+		if wall = (check_for_wall_selection)
+			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "DELETE")
+		else
+			UI.messagebox "No selection or selection isn't a wall."
+		end
+	}
+	cmd.set_validation_proc {
+		if (check_for_wall_selection)
+			MF_ENABLED
+		else
+			MF_GRAYED
+		end
+	}
+	cmd.small_icon = "hb_deletedoor_S.png"
+	cmd.large_icon = "hb_deletedoor_L.png"
+	cmd.tooltip = "Delete door in a wall"
+	hb_tb.add_item(cmd)
+
+	hb_tb.add_separator()
+
+	# Tag
+	cmd = UI::Command.new(("Tag HB objects")) {
+		hb_tag_objects
+	}
+	cmd.small_icon = "hb_tag_S.png"
+	cmd.large_icon = "hb_tag_L.png"
+	cmd.tooltip = "Tag all HouseBuilder objects"
+	hb_tb.add_item(cmd)
+
+	# Estimates
+	cmd = UI::Command.new(("Estimates")) {
+		hb_estimate
+	}
+	cmd.small_icon = "hb_estimate_S.png"
+	cmd.large_icon = "hb_estimate_L.png"
+	cmd.tooltip = "Estimates"
+	hb_tb.add_item(cmd)
+
+	hb_tb.add_separator()
+
+	# Credits
+	cmd = UI::Command.new(("About...")) {(hb_credits)}
+	cmd.small_icon = "hb_credits_S.png"
+	cmd.large_icon = "hb_credits_L.png"
+	cmd.tooltip = "Credits"
+	hb_tb.add_item(cmd)
+
+
+	# End of load
 end
 
 file_loaded("HouseBuilder/HouseBuilderTool.rb")

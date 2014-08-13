@@ -20,11 +20,6 @@ require 'HouseBuilder/HouseBuilderDefaults.rb'
 # set to true for debug output to console
 $VERBOSE = false
 
-# Run
-def exec_on_autoload
-hb_init_config
-#load "HouseBuilder/HouseBuilderTool.rb"
-end
 
 def hb_credits
 	credits = ""
@@ -91,8 +86,11 @@ def hb_init_config
 end
 
 $house_builder_units  = "imperial"
-hb_init_config
 
+# Run
+if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
+	hb_init_config
+end
 
 module HouseBuilder
 
