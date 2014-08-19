@@ -15,26 +15,28 @@
 # Some bugfixes (in particular to doors) by tim Rowledge Mar 2010
 
 require 'sketchup.rb'
-require 'HouseBuilder/HouseBuilderDefaults.rb'
+require 'mm_HouseBuilder/HouseBuilderDefaults.rb'
+
+module MM_HouseBuilder
 
 # set to true for debug output to console
-$VERBOSE = false
+VERBOSE = false
 
 
-def hb_credits
+def self.hb_credits
 	credits = ""
 	#credits += House_Builder_Extension.name + " " + House_Builder_Extension.version + "\n"
 	#credits += "Copyright (C) " + House_Builder_Extension.copyright + "\n"
-	credits += House_Builder_Extension.description + "\n\n"
+	credits += @@mm_HouseBuilderExtension.description + "\n\n"
 	credits += "Mike Morrison - 2014\nBug fixes, merge of metric and imperial versions, and other updates.\n\n"
 	credits += "Tim Rowledge - 2010\nBug fixes (in particular to doors).\n\n"
 	credits += "D. Bur - 2007\nToolbar, metric version, estimates, tags.\n\n"
 	credits += "Steve Hurlbut - 2005\nOriginal program."
-	UI.messagebox(credits, MB_MULTILINE, House_Builder_Extension.name + " " + House_Builder_Extension.version)
+	UI.messagebox(credits, MB_MULTILINE, @@mm_HouseBuilderExtension.name + " " + @@mm_HouseBuilderExtension.version)
 end
 
-def check_for_wall_selection
-wall = HouseBuilder::EditWallTool.get_selected_wall
+def self.check_for_wall_selection
+wall = EditWallTool.get_selected_wall
 return wall
 end
 
@@ -44,7 +46,7 @@ class HouseBuilderOptionsProviderObserver < Sketchup::OptionsProviderObserver
 	def onOptionsProviderChanged(provider, name)
 		if (name.to_s == "LengthUnit")
 			unit_type = provider["LengthUnit"]
-			hb_update_config(unit_type)
+			MM_HouseBuilder.hb_update_config(unit_type)
 		end
 	end
 end
@@ -62,19 +64,19 @@ class HouseBuilderAppObserver < Sketchup::AppObserver
 	end
 end
 
-def hb_update_config(unit_type)
+def self.hb_update_config(unit_type)
 	case unit_type
 	when 0..1
 		new_units = "imperial"
 	else
 		new_units = "metric"
 	end
-	if ($house_builder_units != new_units)
-		$house_builder_units  = new_units
+	if (@house_builder_units != new_units)
+		@house_builder_units  = new_units
 	end
 end
 
-def hb_init_config
+def self.hb_init_config
 	# Attach the observer
 	Sketchup.add_observer(HouseBuilderAppObserver.new)
 
@@ -85,14 +87,17 @@ def hb_init_config
 	hb_update_config(unit_type)
 end
 
-$house_builder_units  = "imperial"
+@house_builder_units  = "imperial"
+
+def self.units
+	return @house_builder_units
+end
 
 # Run
 if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	hb_init_config
 end
 
-module HouseBuilder
 
 #--------  B A S E B U I L D E R  --------------------------------------------
 # This is the base class for the other classes in this module. It provides 
@@ -105,36 +110,36 @@ class BaseBuilder
 
 # global defaults that can be modified by caller
 GLOBAL_OPTIONS_METRIC = {
-	'header_style' => $hb_defaults['metric']['global']['header_style'],
-	'pitch' => $hb_defaults['metric']['global']['pitch'],
-	'on_center_spacing' => $hb_defaults['metric']['global']['on_center_spacing'], 
-	'wall.style' => $hb_defaults['metric']['wall']['style'],
-	'wall.justify' => $hb_defaults['metric']['wall']['justify'],
-	'wall.height' => $hb_defaults['metric']['wall']['height'],
-	'wall.stud_spacing' => $hb_defaults['metric']['wall']['stud_spacing'],
-	'window.header_height' => $hb_defaults['metric']['window']['header_height'],
-	'window.justify' => $hb_defaults['metric']['window']['justify'],
-	'door.header_height' => $hb_defaults['metric']['door']['header_height'],
-	'door.justify' => $hb_defaults['metric']['door']['justify'],
-	'floor.joist_spacing' => $hb_defaults['metric']['floor']['joist_spacing'],
-	'roof.joist_spacing' => $hb_defaults['metric']['roof']['joist_spacing'],
+	'header_style' => HBDEFAULTS['metric']['global']['header_style'],
+	'pitch' => HBDEFAULTS['metric']['global']['pitch'],
+	'on_center_spacing' => HBDEFAULTS['metric']['global']['on_center_spacing'], 
+	'wall.style' => HBDEFAULTS['metric']['wall']['style'],
+	'wall.justify' => HBDEFAULTS['metric']['wall']['justify'],
+	'wall.height' => HBDEFAULTS['metric']['wall']['height'],
+	'wall.stud_spacing' => HBDEFAULTS['metric']['wall']['stud_spacing'],
+	'window.header_height' => HBDEFAULTS['metric']['window']['header_height'],
+	'window.justify' => HBDEFAULTS['metric']['window']['justify'],
+	'door.header_height' => HBDEFAULTS['metric']['door']['header_height'],
+	'door.justify' => HBDEFAULTS['metric']['door']['justify'],
+	'floor.joist_spacing' => HBDEFAULTS['metric']['floor']['joist_spacing'],
+	'roof.joist_spacing' => HBDEFAULTS['metric']['roof']['joist_spacing'],
 	'layer' => nil,
 } if not defined?(GLOBAL_OPTIONS_METRIC)
 
 GLOBAL_OPTIONS_IMPERIAL = {
-	'header_style' => $hb_defaults['imperial']['global']['header_style'],
-	'pitch' => $hb_defaults['imperial']['global']['pitch'],
-	'on_center_spacing' => $hb_defaults['imperial']['global']['on_center_spacing'], 
-	'wall.style' => $hb_defaults['imperial']['wall']['style'],
-	'wall.justify' => $hb_defaults['imperial']['wall']['justify'],
-	'wall.height' => $hb_defaults['imperial']['wall']['height'],
-	'wall.stud_spacing' => $hb_defaults['imperial']['wall']['stud_spacing'],
-	'window.header_height' => $hb_defaults['imperial']['window']['header_height'],
-	'window.justify' => $hb_defaults['imperial']['window']['justify'],
-	'door.header_height' => $hb_defaults['imperial']['door']['header_height'],
-	'door.justify' => $hb_defaults['imperial']['door']['justify'],
-	'floor.joist_spacing' => $hb_defaults['imperial']['floor']['joist_spacing'],
-	'roof.joist_spacing' => $hb_defaults['imperial']['roof']['joist_spacing'],
+	'header_style' => HBDEFAULTS['imperial']['global']['header_style'],
+	'pitch' => HBDEFAULTS['imperial']['global']['pitch'],
+	'on_center_spacing' => HBDEFAULTS['imperial']['global']['on_center_spacing'], 
+	'wall.style' => HBDEFAULTS['imperial']['wall']['style'],
+	'wall.justify' => HBDEFAULTS['imperial']['wall']['justify'],
+	'wall.height' => HBDEFAULTS['imperial']['wall']['height'],
+	'wall.stud_spacing' => HBDEFAULTS['imperial']['wall']['stud_spacing'],
+	'window.header_height' => HBDEFAULTS['imperial']['window']['header_height'],
+	'window.justify' => HBDEFAULTS['imperial']['window']['justify'],
+	'door.header_height' => HBDEFAULTS['imperial']['door']['header_height'],
+	'door.justify' => HBDEFAULTS['imperial']['door']['justify'],
+	'floor.joist_spacing' => HBDEFAULTS['imperial']['floor']['joist_spacing'],
+	'roof.joist_spacing' => HBDEFAULTS['imperial']['roof']['joist_spacing'],
 	'layer' => nil,
 } if not defined?(GLOBAL_OPTIONS_IMPERIAL)
 
@@ -174,7 +179,7 @@ def is_imperial
 end
 
 def self.is_metric
-	return ($house_builder_units == "metric")
+	return (MM_HouseBuilder.units == "metric")
 end
 
 def parameter_changed(name)
@@ -298,18 +303,18 @@ end
 
 # get the object properties from the group's attriibute table
 def get_options_from_drawing(group)
-    puts "options from drawing: " if $VERBOSE
+    puts "options from drawing: " if VERBOSE
     table.keys.each do |key|
         value = group.get_attribute('einfo', key.to_s)
         table[key] = value 
-		puts "#{key} = #{value}" if $VERBOSE
+		puts "#{key} = #{value}" if VERBOSE
     end
-    puts if $VERBOSE
+    puts if VERBOSE
 end
 
 # store object properties in the group's attribute table
 def save_options_to_drawing(group)
-    if ($VERBOSE)
+    if (VERBOSE)
         print "options saved to drawing: "
         table.keys.each { |key| print key.to_s + "=" + table[key].to_s + ", " }
         puts
@@ -367,7 +372,7 @@ JOIST_DATA_METRIC = {
 def initialize(options = {})
 	super()
 	default_options = {
-		'style' => $hb_defaults[$house_builder_units]['global']['style'],
+		'style' => HBDEFAULTS[MM_HouseBuilder.units]['global']['style'],
 		'origin' => Geom::Point3d.new,
 		'orientation' => TOP,
 		'rotation' => 0,
@@ -739,20 +744,20 @@ def initialize(options = {})
 	super()
 	default_options = {
 		'type' => 'wall',
-		'style' => $hb_defaults[$house_builder_units]['wall']['style'],
+		'style' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['style'],
 		'name' => '',
 		'width' => 0, # computed below
-		'height' => $hb_defaults[$house_builder_units]['wall']['height'],
+		'height' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['height'],
 		'length' => 0,
-		'stud_spacing' => $hb_defaults[$house_builder_units]['wall']['stud_spacing'],
-		'on_center_spacing' => $hb_defaults[$house_builder_units]['global']['on_center_spacing'],
+		'stud_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['stud_spacing'],
+		'on_center_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['global']['on_center_spacing'],
 		'origin' => Geom::Point3d.new,
 		'endpt' => Geom::Point3d.new,
 		'angle' => 0,
 		'bottom_plate_count' => 1,
 		'top_plate_count' => 2,
 		'first_stud_offset' => 0,
-		'justify' => $hb_defaults[$house_builder_units]['wall']['justify'],
+		'justify' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['justify'],
 		'layer' => nil,
 		'object_names' => ''
 	}
@@ -827,7 +832,7 @@ def unhide
 end
 
 def draw
-	puts "drawing wall " + name if $VERBOSE
+	puts "drawing wall " + name if VERBOSE
 	pt = Geom::Point3d.new
 	model = Sketchup.active_model
 	torigin = Geom::Point3d.new(origin);
@@ -850,7 +855,7 @@ def draw
 	pt.z = height
 	for i in 1..top_plate_count
 		case self.class.to_s
-		when "HouseBuilder::GableWall"
+		when "MM_HouseBuilder::GableWall"
 			pt.z -= @top_plate_z
 			entities.push(build_top_plate(pt))
 			@stud_height -= @top_plate_z
@@ -1030,7 +1035,7 @@ def build_stud(y, pts, obj)
     end
 
     # draw the stud
-    puts "build_stud: pts = " + pts.inspect if $VERBOSE
+    puts "build_stud: pts = " + pts.inspect if VERBOSE
 
     pts.each do |pt|
         orig_pt = Geom::Point3d.new(0, y, pt[0])
@@ -1103,7 +1108,7 @@ def initialize(options = {})
 		'bottom_plate_count' => 1,
 		'top_plate_count' => 1,
 		'first_stud_offset' => 0,
-		'pitch' => $hb_defaults[$house_builder_units]['global']['pitch'],
+		'pitch' => HBDEFAULTS[MM_HouseBuilder.units]['global']['pitch'],
 		'roof_type' => GABLE_ROOF,
 		'layer' => nil,
 	}
@@ -1278,7 +1283,7 @@ end
 # draw a stud that extends to the top plate and has a sloped top
 # TODO: handle case were stud hits center of gable roof
 def build_stud(y, points, obj)
-    puts "gable build stud, pts = " + points.inspect if $VERBOSE
+    puts "gable build stud, pts = " + points.inspect if VERBOSE
     # fill in the top of the stud
     pts = []
     points.each do |pt| 
@@ -1419,14 +1424,14 @@ class Window < Opening
 def initialize(wall, options = {})
 	super()
 	default_options = { 
-		'header_height' => $hb_defaults[$house_builder_units]['window']['header_height'],
+		'header_height' => HBDEFAULTS[MM_HouseBuilder.units]['window']['header_height'],
 		'name' => '',
 		'type' => 'window',
 		'center_offset' => 0,
-		'width' => $hb_defaults[$house_builder_units]['window']['width'],
-		'height' => $hb_defaults[$house_builder_units]['window']['height'],
-		'header_style' => $hb_defaults[$house_builder_units]['global']['header_style'],
-		'sill_style' => $hb_defaults[$house_builder_units]['window']['sill_style'],
+		'width' => HBDEFAULTS[MM_HouseBuilder.units]['window']['width'],
+		'height' => HBDEFAULTS[MM_HouseBuilder.units]['window']['height'],
+		'header_style' => HBDEFAULTS[MM_HouseBuilder.units]['global']['header_style'],
+		'sill_style' => HBDEFAULTS[MM_HouseBuilder.units]['window']['sill_style'],
 		'justify' => 'left',
 		'rough_opening' => 0,
 		'layer' => nil,
@@ -1464,7 +1469,7 @@ def adjust_stud(y, pts, keep)
 end
 
 def draw(wall)
-	puts "drawing window " + name if $VERBOSE
+	puts "drawing window " + name if VERBOSE
 	entities = []
 	model = Sketchup.active_model
 	
@@ -1569,15 +1574,15 @@ class Door < Opening
 def initialize(wall, options = {})
 	super()
 	default_options = { 
-		'header_height' => $hb_defaults[$house_builder_units]['door']['header_height'],
+		'header_height' => HBDEFAULTS[MM_HouseBuilder.units]['door']['header_height'],
 		'name' => '',
 		'type' => 'door',
 		'center_offset' => 0,
-		'width' => $hb_defaults[$house_builder_units]['door']['width'],
-		'height' => $hb_defaults[$house_builder_units]['door']['height'],
-		'header_style' => $hb_defaults[$house_builder_units]['global']['header_style'],
+		'width' => HBDEFAULTS[MM_HouseBuilder.units]['door']['width'],
+		'height' => HBDEFAULTS[MM_HouseBuilder.units]['door']['height'],
+		'header_style' => HBDEFAULTS[MM_HouseBuilder.units]['global']['header_style'],
 		'justify' => 'left',
-		'rough_opening' => $hb_defaults[$house_builder_units]['door']['rough_opening'],
+		'rough_opening' => HBDEFAULTS[MM_HouseBuilder.units]['door']['rough_opening'],
 		'layer' => nil,
 	}
 	apply_global_options(default_options)
@@ -1611,7 +1616,7 @@ def adjust_stud(y, pts, keep)
 end
 
 def draw(wall)
-	puts "drawing door " + name if $VERBOSE
+	puts "drawing door " + name if VERBOSE
 	model = Sketchup.active_model
 	entities = []	
 
@@ -1736,10 +1741,10 @@ def initialize(wall, options = {})
 	default_options = {
 		'name' => '',
 		'type' => 'roof',
-		'joist_spacing' => $hb_defaults[$house_builder_units]['roof']['joist_spacing'],
-		'on_center_spacing' => $hb_defaults[$house_builder_units]['global']['on_center_spacing'],
-		'style' => $hb_defaults[$house_builder_units]['roof']['style'],
-		'ridge_style' => $hb_defaults[$house_builder_units]['roof']['ridge_style'],
+		'joist_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['joist_spacing'],
+		'on_center_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['global']['on_center_spacing'],
+		'style' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['style'],
+		'ridge_style' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['ridge_style'],
 		'roof_style' => GABLE_ROOF,
 		'framing' => COMMON_RAFTER,
 		'joist_type' => nil,
@@ -1747,10 +1752,10 @@ def initialize(wall, options = {})
 		'corner2' => [0, 0, 0],
 		'corner3' => [0, 0, 0],
 		'corner4' => [0, 0, 0],
-		'pitch' => $hb_defaults[$house_builder_units]['global']['pitch'],
-		'overhang' => $hb_defaults[$house_builder_units]['roof']['overhang'],
-		'rake_overhang' => $hb_defaults[$house_builder_units]['roof']['rake_overhang'],
-		'shed_ridge_overhang' => $hb_defaults[$house_builder_units]['roof']['shed_ridge_overhang'],
+		'pitch' => HBDEFAULTS[MM_HouseBuilder.units]['global']['pitch'],
+		'overhang' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['overhang'],
+		'rake_overhang' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['rake_overhang'],
+		'shed_ridge_overhang' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['shed_ridge_overhang'],
 		'layer' => nil,
 	}
 
@@ -1823,7 +1828,7 @@ def draw
 	if (is_metric())
 		@roof_angle = pitch.degrees
 	end
-	puts "drawing roof " + name if $VERBOSE
+	puts "drawing roof " + name if VERBOSE
 	model = Sketchup.active_model
 	entities = []
 	is_gable = (roof_style == GABLE_ROOF)
@@ -2091,9 +2096,9 @@ def initialize(options = {})
 	default_options = {
 		'name' => '',
 		'type' => 'floor',
-		'joist_spacing' => $hb_defaults[$house_builder_units]['floor']['joist_spacing'],
-		'on_center_spacing' => $hb_defaults[$house_builder_units]['global']['on_center_spacing'],
-		'style' => $hb_defaults[$house_builder_units]['floor']['style'],
+		'joist_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['floor']['joist_spacing'],
+		'on_center_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['global']['on_center_spacing'],
+		'style' => HBDEFAULTS[MM_HouseBuilder.units]['floor']['style'],
 		'corner1' => [0, 0, 0],
 		'corner2' => [0, 0, 0],
 		'corner3' => [0, 0, 0],
@@ -2118,7 +2123,7 @@ def self.create_from_drawing(group)
 end
 
 def draw
-	puts "drawing floor " + name if $VERBOSE
+	puts "drawing floor " + name if VERBOSE
 	model = Sketchup.active_model
 	entities = []
 	
@@ -2182,7 +2187,7 @@ end
 
 end # class Floor
 
-end # module HouseBuilder
+end # module MM_HouseBuilder
 
 
 #-----------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 #! /bin/sh
 
-rm HouseBuilder.rbz
+rm mm_HouseBuilder.rbz
 cd src
-zip -r ../HouseBuilder.rbz * 
+zip -r ../mm_HouseBuilder.rbz * 

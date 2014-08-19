@@ -14,15 +14,19 @@
 require 'extensions.rb'
 require 'langhandler.rb'
 
+module MM_HouseBuilder
+
 # Extension Manager
-$uStrings = LanguageHandler.new("House Builder")
-HouseBuilder_extension= SketchupExtension.new $uStrings.GetString("House Builder"), "HouseBuilder/HouseBuilderTool.rb"
-HouseBuilder_extension.description=$uStrings.GetString("A sketchup extension for creating wood framed buildings.")
-HouseBuilder_extension.name= "House Builder"
-HouseBuilder_extension.creator = "Steve Hurlbut"
-HouseBuilder_extension.copyright = "2014 Mike Morrison, 2005 Steve Hurlbut, D. Bur"
-HouseBuilder_extension.version = "1.3"
-Sketchup.register_extension HouseBuilder_extension, true
+@@mm_HouseBuilder_uStrings = LanguageHandler.new("House Builder")
+@@mm_HouseBuilderExtension = SketchupExtension.new @@mm_HouseBuilder_uStrings.GetString("House Builder"), "mm_HouseBuilder/HouseBuilderTool.rb"
+@@mm_HouseBuilderExtension .description=@@mm_HouseBuilder_uStrings.GetString("A sketchup extension for creating wood framed buildings.")
+@@mm_HouseBuilderExtension .name= "House Builder"
+@@mm_HouseBuilderExtension .creator = "Steve Hurlbut"
+@@mm_HouseBuilderExtension .copyright = "2014 Mike Morrison, 2005 Steve Hurlbut, D. Bur"
+@@mm_HouseBuilderExtension .version = "1.3"
+Sketchup.register_extension @@mm_HouseBuilderExtension , true
 
 
-file_loaded("HouseBuilder.rb")
+end
+
+file_loaded("mm_HouseBuilder.rb")

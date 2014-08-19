@@ -12,8 +12,10 @@
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 require 'sketchup.rb'
-require 'HouseBuilder/HouseBuilderDefaults.rb'
-require 'HouseBuilder/HouseBuilder.rb'
+require 'mm_HouseBuilder/HouseBuilderDefaults.rb'
+require 'mm_HouseBuilder/HouseBuilder.rb'
+
+module MM_HouseBuilder
 
 # these are the states that a tool can be in
 STATE_EDIT = 0 if not defined? STATE_EDIT
@@ -24,14 +26,14 @@ STATE_MOVING = 4 if not defined? STATE_MOVING
 STATE_SELECT = 5 if not defined? STATE_SELECT
 
 
-def min(x, y)
+def self.min(x, y)
     if (x < y)
         return x
     end
     return y
 end
 
-def max(x, y)
+def self.max(x, y)
     if (x > y) 
         return x
     end
@@ -39,7 +41,7 @@ def max(x, y)
 end
 
 # display an input dialog and store the results in an object
-def display_dialog(title, obj, data)
+def self.display_dialog(title, obj, data)
     prompts = []
     attr_names = []
     values = []
@@ -60,17 +62,17 @@ def display_dialog(title, obj, data)
 end
 
 # display an input dialog and store the results in the global options hash table
-def display_global_options_dialog()
+def self.display_global_options_dialog()
 	parameters = [
 	    # prompt, attr_name, value, enums
-	    [ "Wall Lumber Size", "wall.style", $hb_defaults[$house_builder_units]['wall']['lumber_sizes'].join("|") ],
+	    [ "Wall Lumber Size", "wall.style", HBDEFAULTS[MM_HouseBuilder.units]['wall']['lumber_sizes'].join("|") ],
 	    [ "Wall Plate Height", "wall.height", nil ],
 	    [ "Wall Justification  ", "window.justify",  "left|center|right" ],
 	    [ "Wall Stud Spacing", "wall.stud_spacing", nil ],
 	    [ "Roof Joist Spacing", 'roof.joist_spacing', nil ],
 	 	[ "Floor Joist Spacing", 'floor.joist_spacing', nil ],
 		[ "On-Center Spacing", "on_center_spacing", "true|false"],
-	    [ "Header Size", "header_style", $hb_defaults[$house_builder_units]['global']['header_sizes'].join("|") ],
+	    [ "Header Size", "header_style", HBDEFAULTS[MM_HouseBuilder.units]['global']['header_sizes'].join("|") ],
 	    [ "Door Header Height", "door.header_height", nil ],
 	    [ "Door Justification  ", "door.justify",  "left|center|right" ],
 	    [ "Window Header Height", "window.header_height", nil ],
@@ -81,12 +83,12 @@ def display_global_options_dialog()
     attr_names = []
     values = []
     enums = []
-    parameters.each { |a| prompts.push(a[0]); attr_names.push(a[1]); values.push(HouseBuilder::BaseBuilder.get_global_option(a[1])); enums.push(a[2]) }
+    parameters.each { |a| prompts.push(a[0]); attr_names.push(a[1]); values.push(BaseBuilder.get_global_option(a[1])); enums.push(a[2]) }
     results = UI.inputbox(prompts, values, enums, 'Global Properties')
     if results
         i = 0
         attr_names.each do |name|
-            HouseBuilder::BaseBuilder.set_global_option(name,results[i])
+            BaseBuilder.set_global_option(name,results[i])
             i = i + 1
         end
     end
@@ -94,7 +96,7 @@ def display_global_options_dialog()
 end
 
 # draw a 2D rectangle at the base of a wall
-def draw_outline(view, start_pt, end_pt, width, wall_justify, color, line_width=1)
+def self.draw_outline(view, start_pt, end_pt, width, wall_justify, color, line_width=1)
     # draw a line from the start to the end point
     view.set_color_from_line(start_pt, end_pt)
     view.line_width = line_width
@@ -128,7 +130,7 @@ def draw_outline(view, start_pt, end_pt, width, wall_justify, color, line_width=
 end
 
 # draw a 2D rectangle for a floor or roof
-def draw_rect_outline(view, start_pt, end_pt, color)
+def self.draw_rect_outline(view, start_pt, end_pt, color)
     # draw a line from the start to the end point
     a = start_pt
     b = Geom::Point3d.new(start_pt.x, end_pt.y, end_pt.z)
@@ -140,19 +142,19 @@ def draw_rect_outline(view, start_pt, end_pt, color)
     view.draw(GL_LINE_STRIP, d, a)
 end
 
-def create_wall_from_drawing(group)
+def self.create_wall_from_drawing(group)
     name = group.get_attribute("einfo", "name")
     if (name =~ /_skin/)
         name.sub!('_skin', '')
-        group = HouseBuilder::BaseBuilder.find_named_entity(name)
+        group = BaseBuilder.find_named_entity(name)
     end
     case group.get_attribute("einfo", "type")
     when "wall"
-	    wall = HouseBuilder::Wall.create_from_drawing(group) 
+	    wall = Wall.create_from_drawing(group) 
 	when "GableWall" 
-	    wall = HouseBuilder::GableWall.create_from_drawing(group) 
+	    wall = GableWall.create_from_drawing(group) 
 	when "rakewall" 
-	    wall = HouseBuilder::GableWall.create_from_drawing(group) 
+	    wall = GableWall.create_from_drawing(group) 
 	else
 	    UI.messagebox "unknown wall type"
 	end
@@ -164,7 +166,6 @@ end
 # FIXME: this should probably be 2xstud_z_size?
 MIN_WALL = 3 if not defined? MIN_WALL
 
-module HouseBuilder
 
 #--------  W A L L T O O L  ------------------------------------------------
 
@@ -179,15 +180,15 @@ def initialize()
 	@properties = [
 		# prompt, attr_name, enums
 		[ "Wall Justification  ", "justify", "left|center|right" ],
-		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['wall']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['wall']['lumber_sizes'].join("|") ],
 		[ "Plate Height", "height", nil ],
 		[ "Stud Spacing", "stud_spacing", nil ],
 		[ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
 		[ "Top Plate Count", "top_plate_count", "0|1|2" ],
 	   ]
 
-	@wall = HouseBuilder::Wall.new() 
-	results = display_dialog("Wall Properties", @wall, @properties)
+	@wall = Wall.new() 
+	results = MM_HouseBuilder.display_dialog("Wall Properties", @wall, @properties)
 	return false if not results
 end
 
@@ -201,14 +202,14 @@ def reset
 end
 
 def activate
-    puts "activate wall tool" if $VERBOSE
+    puts "activate wall tool" if VERBOSE
     @ip1 = Sketchup::InputPoint.new
     @ip = Sketchup::InputPoint.new
     self.reset
 end
 
 def deactivate(view)
-    puts "deactivate wall tool" if $VERBOSE
+    puts "deactivate wall tool" if VERBOSE
     view.invalidate if @drawn
     @ip1 = nil
     self.reset
@@ -252,7 +253,7 @@ def draw_wall
     new_wall.origin = @pts[0]
 	new_wall.length = @pts[0].distance(@pts[1])
 	vec = @pts[0].vector_to(@pts[1])
-	puts "vec = " + vec.inspect if $VERBOSE
+	puts "vec = " + vec.inspect if VERBOSE
 	if (vec.x.abs > 0.1)
 	    a1 = Math.atan2(vec.y, vec.x).radians 
 	    new_wall.angle = a1 - 90
@@ -264,7 +265,7 @@ def draw_wall
 	        new_wall.angle = 180
 	    end
     end
-	puts "draw wall from " + @pts[0].to_s + " to " + @pts[1].to_s + " angle " + new_wall.angle.to_s if $VERBOSE
+	puts "draw wall from " + @pts[0].to_s + " to " + @pts[1].to_s + " angle " + new_wall.angle.to_s if VERBOSE
 	group, skin_group = new_wall.draw
     model.commit_operation
 end
@@ -290,7 +291,7 @@ def onLButtonDown(flags, x, y, view)
 end
 
 def onCancel(flag, view)
-    puts "on cancel" if $VERBOSE
+    puts "on cancel" if VERBOSE
     view.invalidate if @drawn
     reset
     Sketchup.active_model.select_tool(nil)
@@ -348,7 +349,7 @@ def draw(view)
     # show the wall base outline
     if (@state == STATE_PICK_NEXT)
 		#puts "wall width3: " + @wall.width.to_s + " " + @wall.width.class.to_s
-        (@offset_pt0, @offset_pt1) = draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
+        (@offset_pt0, @offset_pt1) = MM_HouseBuilder.draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
         @drawn = true
     end
 end
@@ -368,15 +369,15 @@ def initialize()
 		[ "Pitch", "pitch", nil ],
 		[ "Roof type", 'roof_type', "gable|shed" ],
 		[ "Wall Justification  ", "justify", "left|center|right" ],
-		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['wall']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['wall']['lumber_sizes'].join("|") ],
 		[ "Plate Height", "height", nil ],
 		[ "Stud Spacing", "stud_spacing", nil ],
 		[ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
 		[ "Top Plate Count", "top_plate_count", "0|1|2" ],
 	]
 
-	@wall = HouseBuilder::GableWall.new() 
-	results = display_dialog("Gable Wall Properties", @wall, @properties)
+	@wall = GableWall.new() 
+	results = MM_HouseBuilder.display_dialog("Gable Wall Properties", @wall, @properties)
 	return false if not results
 end
 
@@ -416,7 +417,7 @@ def initialize(wall)
             @skin_group = BaseBuilder.find_named_entity(name + "_skin")
         end
         
-        @wall = create_wall_from_drawing(@group)
+        @wall = MM_HouseBuilder.create_wall_from_drawing(@group)
         
         # puts "wall = " + @wall.to_s
         if (not @wall)
@@ -437,7 +438,7 @@ def initialize(wall)
 end
 
 def activate
-    puts "EditWallTool: activate" if $VERBOSE
+    puts "EditWallTool: activate" if VERBOSE
     @group.hidden = true
     @skin_group.hidden = true if @skin_group
 	@pts = [ @wall.origin, @wall.endpt ]
@@ -550,10 +551,10 @@ def find_selected_object(x, y, view)
         # puts "obj_start = " + obj_start.inspect
         # puts "obj_end = " + obj_end.inspect
         # puts "obj_start_offset = " + obj_start_offset.inspect
-        if ((point.y > min(obj_start.y, obj_end.y)) &&
-            (point.y < max(obj_start.y, obj_end.y)) &&
-            (point.x > min(obj_start.x, obj_start_offset.x)) &&
-            (point.x < max(obj_start.x, obj_start_offset.x)))
+        if ((point.y > MM_HouseBuilder.min(obj_start.y, obj_end.y)) &&
+            (point.y < MM_HouseBuilder.max(obj_start.y, obj_end.y)) &&
+            (point.x > MM_HouseBuilder.min(obj_start.x, obj_start_offset.x)) &&
+            (point.x < MM_HouseBuilder.max(obj_start.x, obj_start_offset.x)))
             # puts "found"
             view.invalidate
             return(obj)
@@ -699,7 +700,7 @@ def draw_wall
 	        @wall.angle = 180
 	    end
     end
-	puts "draw wall from " + @pts[0].to_s + " to " + @pts[1].to_s + " angle " + @wall.angle.to_s if $VERBOSE
+	puts "draw wall from " + @pts[0].to_s + " to " + @pts[1].to_s + " angle " + @wall.angle.to_s if VERBOSE
 	@group.erase!
 	@skin_group.erase! if (@skin_group)
 	
@@ -713,18 +714,18 @@ end
 
 # edit a door or window
 def edit_object(obj)
-    puts "edit object #{obj}" if $VERBOSE
+    puts "edit object #{obj}" if VERBOSE
     Sketchup.active_model.select_tool EditOpeningTool.new(self, obj)
 end
 
 def self.show_prop_dialog
     tool = EditWallTool.new(nil)
-    if (tool.wall.kind_of?(HouseBuilder::GableWall))
+    if (tool.wall.kind_of?(GableWall))
 		gabletool = GableWallTool.new
-        results = display_dialog("Gable Wall Properties", tool.wall, gabletool.properties)
+        results = MM_HouseBuilder.display_dialog("Gable Wall Properties", tool.wall, gabletool.properties)
     else
 		walltool = WallTool.new
-        results = display_dialog("Wall Properties", tool.wall, walltool.properties)
+        results = MM_HouseBuilder.display_dialog("Wall Properties", tool.wall, walltool.properties)
     end
 	if (results)
 	    tool.changed = true
@@ -752,7 +753,7 @@ def draw(view)
     @corners = [] if not defined?(@corners)
     @corners[0] = @pts[0]
     @corners[1] = @pts[1]
-    (a, b) = draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
+    (a, b) = MM_HouseBuilder.draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
     # puts "a = " + a.inspect
     @corners[2] = b
     @corners[3] = a
@@ -764,9 +765,9 @@ def draw(view)
         vec.length = obj.width
         obj_end = obj_start + vec
         if (defined?(@selected_obj) && (obj == @selected_obj))
-            draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
+            MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
         else
-            draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
+            MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
         end
     end
     
@@ -822,19 +823,19 @@ def initialize(wall_group)
 		# prompt, attr_name, value, enums
 		[ "Offset Justification  ", "justify", "left|center|right" ],
 		[ "Header Height", "header_height", nil ],
-		[ "Header Size", "header_style", $hb_defaults[$house_builder_units]['global']['header_sizes'].join("|") ],
-		[ "Sill Size", "sill_style", $hb_defaults[$house_builder_units]['window']['sill_sizes'].join("|") ],
+		[ "Header Size", "header_style", HBDEFAULTS[MM_HouseBuilder.units]['global']['header_sizes'].join("|") ],
+		[ "Sill Size", "sill_style", HBDEFAULTS[MM_HouseBuilder.units]['window']['sill_sizes'].join("|") ],
 		[ "Width", "width", nil ],
 		[ "Height", "height", nil ],
 	]
 	   
-	@wall = create_wall_from_drawing(wall_group)
-	@obj = HouseBuilder::Window.new(@wall)
+	@wall = MM_HouseBuilder.create_wall_from_drawing(wall_group)
+	@obj = Window.new(@wall)
     @objtype = "Wall"
 end
 
 def show_dialog
-	results = display_dialog("Window Properties", @obj, @properties)
+	results = MM_HouseBuilder.display_dialog("Window Properties", @obj, @properties)
 	if results
 		reset()
 		return true
@@ -951,7 +952,7 @@ def onLButtonDown(flags, x, y, view)
 end
 
 def onCancel(flag, view)
-	puts "cancel door/wall" if $VERBOSE
+	puts "cancel door/wall" if VERBOSE
     view.invalidate if @drawn
     Sketchup.active_model.select_tool(nil)
     reset
@@ -1001,7 +1002,7 @@ def draw(view)
     end 
 
     # draw the outline of the wall
-    draw_outline(view, @wall.origin, @wall.endpt, @wall.width, @wall.justify, "gray")
+    MM_HouseBuilder.draw_outline(view, @wall.origin, @wall.endpt, @wall.width, @wall.justify, "gray")
     vec = @end_pt - @start_pt
     # draw the outline of each door and window
     @wall.objects.each do |obj|
@@ -1009,9 +1010,9 @@ def draw(view)
         obj_start = @wall.origin + vec
         vec.length = obj.width
         obj_end = obj_start + vec
-        draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
+        MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
     end
-    draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "orange", 2)
+    MM_HouseBuilder.draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "orange", 2)
     @drawn = true
 end
 
@@ -1031,18 +1032,18 @@ def initialize(wall_group)
 		# prompt, attr_name, value, enums
 		[ "Offset Justification  ", "justify", "left|center|right" ],
 		[ "Header Height", "header_height", nil ],
-		[ "Header Size", "header_style", $hb_defaults[$house_builder_units]['global']['header_sizes'].join("|") ],
+		[ "Header Size", "header_style", HBDEFAULTS[MM_HouseBuilder.units]['global']['header_sizes'].join("|") ],
 		[ "Width", "width", nil ],
 		[ "Height", "height", nil ],
 	]
 
-	@wall = create_wall_from_drawing(wall_group)
-	@obj = HouseBuilder::Door.new(@wall)
+	@wall = MM_HouseBuilder.create_wall_from_drawing(wall_group)
+	@obj = Door.new(@wall)
 	@objtype = "Door"
 end
 
 def show_dialog
-	results = display_dialog("Door Properties", @obj, @properties)
+	results = MM_HouseBuilder.display_dialog("Door Properties", @obj, @properties)
 	if results
 		reset()
 		return true
@@ -1071,7 +1072,7 @@ attr_accessor :obj, :wall, :operation
 def initialize(wall_group, objtype, operation)
     @operation = operation
 	@objtype = objtype
-	@wall = create_wall_from_drawing(wall_group)
+	@wall = MM_HouseBuilder.create_wall_from_drawing(wall_group)
 	@offset = 0
 	@selected_obj = nil
 	@pt_to_move = nil
@@ -1156,10 +1157,10 @@ def find_selected_object(x, y, view)
         # puts "obj_start = " + obj_start.inspect
         # puts "obj_end = " + obj_end.inspect
         # puts "obj_start_offset = " + obj_start_offset.inspect
-        if ((point.y > min(obj_start.y, obj_end.y)) &&
-            (point.y < max(obj_start.y, obj_end.y)) &&
-            (point.x > min(obj_start.x, obj_start_offset.x)) &&
-            (point.x < max(obj_start.x, obj_start_offset.x)))
+        if ((point.y > MM_HouseBuilder.min(obj_start.y, obj_end.y)) &&
+            (point.y < MM_HouseBuilder.max(obj_start.y, obj_end.y)) &&
+            (point.x > MM_HouseBuilder.min(obj_start.x, obj_start_offset.x)) &&
+            (point.x < MM_HouseBuilder.max(obj_start.x, obj_start_offset.x)))
             # puts "found"
             view.invalidate
             return(obj)
@@ -1221,7 +1222,7 @@ def onLButtonDown(flags, x, y, view)
 end
 
 def onCancel(flag, view)
-	puts "cancel edit #{@objtype}" if $VERBOSE
+	puts "cancel edit #{@objtype}" if VERBOSE
     Sketchup.active_model.select_tool(nil) 
 end
 
@@ -1252,7 +1253,7 @@ def onUserText(text, view)
 end
 
 def do_operation
-    puts "executing operation #{@operation}" if $VERBOSE
+    puts "executing operation #{@operation}" if VERBOSE
     case @operation
     when "CHANGE_PROPERTIES"
         show_prop_dialog
@@ -1270,10 +1271,10 @@ def show_prop_dialog
     case @objtype
     when "Window"
 		windowtool = WindowTool.new
-        results = display_dialog("Window Properties", @selected_obj, windowtool.properties)
+        results = MM_HouseBuilder.display_dialog("Window Properties", @selected_obj, windowtool.properties)
     when "Door"
 		doortool = DoorTool.new
-        results = display_dialog("Door Properties", @selected_obj, doortool.properties)
+        results = MM_HouseBuilder.display_dialog("Door Properties", @selected_obj, doortool.properties)
     end
 	if (results)
         draw_obj
@@ -1321,7 +1322,7 @@ def draw(view)
     # draw the outline of the wall
     @corners[0] = @wall.origin
     @corners[1] = @wall.endpt
-    (a, b) = draw_outline(view, @corners[0], @corners[1], @wall.width, @wall.justify, "gray")
+    (a, b) = MM_HouseBuilder.draw_outline(view, @corners[0], @corners[1], @wall.width, @wall.justify, "gray")
     # puts "a = " + a.inspect
     @corners[2] = b
     @corners[3] = a
@@ -1334,14 +1335,14 @@ def draw(view)
         obj_end = obj_start + vec
         if (defined?(@selected_obj) && (obj == @selected_obj))
             if (@state != STATE_MOVING)
-                draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
+                MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
             end
         else
-            draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
+            MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
         end
     end
     if (@state == STATE_MOVING)
-        draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "red", 2)
+        MM_HouseBuilder.draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "red", 2)
     end
     
     @drawn = true
@@ -1377,16 +1378,16 @@ def initialize()
 	@properties = [
 		# prompt, attr_name, value, enums
 		[ "Type", "roof_style", "gable|shed" ],
-		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['roof']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['roof']['lumber_sizes'].join("|") ],
 		[ "Joist Spacing", "joist_spacing", nil ],
 		[ "Pitch", "pitch", nil ],
 		[ "Overhang", "overhang", nil ],
 		[ "Rake Overhang", "rake_overhang", nil ],
 	]
     @tool_name = "ROOFTOOL"
-    wall = HouseBuilder::Wall.new()
-	@obj = HouseBuilder::Roof.new(wall) 
-	results = display_dialog("Roof Properties", @obj, @properties)
+    wall = Wall.new()
+	@obj = Roof.new(wall) 
+	results = MM_HouseBuilder.display_dialog("Roof Properties", @obj, @properties)
 	return false if not results
 	reset
 	@type = "roof"
@@ -1399,7 +1400,7 @@ def reset
     Sketchup::set_status_text "", SB_VCB_VALUE
     Sketchup::set_status_text "[#{@tool_name}] Click front left corner"
     @drawn = false
-    puts "reset" if $VERBOSE
+    puts "reset" if VERBOSE
 end
 
 def activate
@@ -1468,7 +1469,7 @@ def draw_obj
     @obj.corner2 = @pts[1]
     @obj.corner3 = @pts[2]
     @obj.corner4 = @pts[3]
-	puts "draw from " + @pts[0].to_s + " to " + @pts[2].to_s if $VERBOSE
+	puts "draw from " + @pts[0].to_s + " to " + @pts[2].to_s if VERBOSE
 	model = Sketchup.active_model
 	model.start_operation "Create #{@type}"
 	group = @obj.draw
@@ -1621,13 +1622,13 @@ class FloorTool < RoofTool
 def initialize()
 	@properties= [
 		# prompt, attr_name, value, enums
-		[ "Lumber Size", "style", $hb_defaults[$house_builder_units]['floor']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['floor']['lumber_sizes'].join("|") ],
 		[ "Joist Spacing", "joist_spacing", nil ],
 	]
 
     @tool_name = "FLOORTOOL"
-	@obj = HouseBuilder::Floor.new() 
-	results = display_dialog("Floor Properties", @obj, @properties)
+	@obj = Floor.new() 
+	results = MM_HouseBuilder.display_dialog("Floor Properties", @obj, @properties)
 	return false if not results
 	reset
 	@type = "floor"
@@ -1635,12 +1636,11 @@ end
 
 end # class FloorTool
 
-end # module HouseBuilder
 
 
 # --------  E S T I M A T E  ------------------------------------------------
 
-def hb_estimate
+def self.hb_estimate
   model=Sketchup.active_model
   view=model.active_view
   ents=model.entities
@@ -1825,7 +1825,7 @@ UI.openURL(file_name)
 end
 
 #------------------------------ Skin related
-def find_skin_group( wall )
+def self.find_skin_group( wall )
 skin_group = wall + "_skin"
 res_group = nil
 Sketchup.active_model.entities.each do |e|
@@ -1840,7 +1840,7 @@ end
 return res_group
 end
 
-def skin_area ( skin_group )
+def self.skin_area ( skin_group )
 ents = skin_group.entities
 surfs = []
 ents.each do |e|
@@ -1851,7 +1851,7 @@ end
 return surfs.sort.reverse[0]/1550.0031000062
 end
 #------------------------------ Floor related
-def floor_surface( d )
+def self.floor_surface( d )
   wid = d["corner1"].distance d["corner2"]
   len = d["corner1"].distance d["corner4"]
   srf = (len*wid) / 1550.0031000062
@@ -1859,7 +1859,7 @@ def floor_surface( d )
   return srf
 end
 
-def floor_total_joist_length( d )
+def self.floor_total_joist_length( d )
 spacing = d["joist_spacing"]
 joist_length = d["corner1"].distance d["corner2"]
 floor_length = d["corner1"].distance d["corner4"]
@@ -1871,13 +1871,13 @@ return (n_joists*joist_length).to_l.ceil
 end
 
 #------------------------------ Wall related
-def stud_length_ratio( d )
+def self.stud_length_ratio( d )
   spacing = d["stud_spacing"].to_l
   ratio = (((d["length"].to_l / spacing)+1) / d["length"].to_l)
   #puts ratio.to_s
 end
 
-def rect_walls_stud_height( d )
+def self.rect_walls_stud_height( d )
   interval = d["stud_spacing"]
   total_height = d["height"].to_l
   thick = d["style"].split("x")[0].to_f
@@ -1885,7 +1885,7 @@ def rect_walls_stud_height( d )
   return total_height - (d["bottom_plate_count"]*stud_thick) - (d["top_plate_count"]*stud_thick)
 end
 
-def gable_walls_average_stud_height( d )
+def self.gable_walls_average_stud_height( d )
   type = d["roof_type"]
   interval = d["stud_spacing"]
   low_height = d["height"].to_l
@@ -1908,7 +1908,7 @@ def gable_walls_average_stud_height( d )
   
 end
 
-def rect_walls_total_stud_length( d )
+def self.rect_walls_total_stud_length( d )
 sh = rect_walls_stud_height( d )
 wl = d["length"].to_l
 spacing = d["stud_spacing"].to_l
@@ -1916,7 +1916,7 @@ n_studs = (wl / spacing).ceil + 1
 return n_studs*sh
 end
 #------------------------------ Gable related
-def gables_total_stud_length( d )
+def self.gables_total_stud_length( d )
 sh = gable_walls_average_stud_height( d )
 spacing = d["stud_spacing"]
 wl = d["length"]
@@ -1925,7 +1925,7 @@ n_studs = (wl / spacing).ceil + 1
 return n_studs*sh
 end
 
-def gable_top_plate_length( w_length, pitch )
+def self.gable_top_plate_length( w_length, pitch )
 ang = pitch.degrees
 #puts ang.to_s
 #puts w_length.class
@@ -1933,14 +1933,14 @@ return w_length.to_l / Math.cos(ang).abs
 end
 
 #------------------------------ Roof related
-def roof_base_proj_surface( d )
+def self.roof_base_proj_surface( d )
   wid = d["corner1"].distance d["corner2"]
   len = d["corner1"].distance d["corner4"]
   srf = (len*wid) / 1550.0031000062
   return srf
 end
 
-def roof_tot_proj_surface( d )
+def self.roof_tot_proj_surface( d )
   wid = d["corner1"].distance d["corner2"]
   len = d["corner1"].distance d["corner4"]
   over1 = d["overhang"]
@@ -1951,7 +1951,7 @@ def roof_tot_proj_surface( d )
   return srf
 end
 
-def roof_real_surface( d )
+def self.roof_real_surface( d )
   ang = d["pitch"].degrees
   wid = d["corner1"].distance d["corner2"]
   len = d["corner1"].distance d["corner4"]
@@ -1963,7 +1963,7 @@ def roof_real_surface( d )
   return srf
 end
 
-def roof_total_joist_length( d )
+def self.roof_total_joist_length( d )
   ang = d["pitch"].degrees
   spacing = d["joist_spacing"]
   wid = d["corner1"].distance d["corner2"]
@@ -1980,7 +1980,7 @@ end
 
 
 #------------------------------ Label HB objects
-def hb_tag_objects
+def self.hb_tag_objects
 model=Sketchup.active_model
 view=model.active_view
 ents=model.entities
@@ -2030,44 +2030,44 @@ end
 # Add a menu items
 if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
     submenu = UI.menu("Draw").add_submenu("House Builder")
-    submenu.add_item("Wall Tool") { Sketchup.active_model.select_tool HouseBuilder::WallTool.new }    
-    submenu.add_item("Gable Wall Tool") { Sketchup.active_model.select_tool HouseBuilder::GableWallTool.new }
-    submenu.add_item("Roof Tool") { Sketchup.active_model.select_tool HouseBuilder::RoofTool.new }
-    submenu.add_item("Floor Tool") { Sketchup.active_model.select_tool HouseBuilder::FloorTool.new }
+    submenu.add_item("Wall Tool") { Sketchup.active_model.select_tool WallTool.new }    
+    submenu.add_item("Gable Wall Tool") { Sketchup.active_model.select_tool GableWallTool.new }
+    submenu.add_item("Roof Tool") { Sketchup.active_model.select_tool RoofTool.new }
+    submenu.add_item("Floor Tool") { Sketchup.active_model.select_tool FloorTool.new }
     submenu.add_item("Change Global Properties") { display_global_options_dialog }
     #submenu.add_item("Reload Tools") { load "HouseBuilder.rb"; load "HouseBuilderTool.rb" }
     
     # Add a context menu handler to let you edit a Wall
     UI.add_context_menu_handler do |menu|
-        wall = HouseBuilder::EditWallTool.get_selected_wall
+        wall = EditWallTool.get_selected_wall
         if (wall)
-            submenu = menu.add_submenu("Edit Wall"){ HouseBuilder::EditWallTool.edit_wall }
+            submenu = menu.add_submenu("Edit Wall"){ EditWallTool.edit_wall }
 
-            submenu.add_item("Move Wall")             { HouseBuilder::EditWallTool.move }
-            submenu.add_item("Wall Properties"){ HouseBuilder::EditWallTool.show_prop_dialog }
+            submenu.add_item("Move Wall")             { EditWallTool.move }
+            submenu.add_item("Wall Properties"){ EditWallTool.show_prop_dialog }
 			submenu.add_separator()
 			cmd = UI::Command.new(("Insert Window")) {
-				windowtool = HouseBuilder::WindowTool.new(wall)
+				windowtool = WindowTool.new(wall)
 				if windowtool.show_dialog()
 					Sketchup.active_model.select_tool windowtool
 				end
 			}
 
             submenu.add_item(cmd)
-            submenu.add_item("Change Window Properties"){ Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "CHANGE_PROPERTIES") }          
-            submenu.add_item("Move Window")             { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "MOVE") }          
-            submenu.add_item("Delete Window")           { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "DELETE") }   
+            submenu.add_item("Change Window Properties"){ Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Window", "CHANGE_PROPERTIES") }          
+            submenu.add_item("Move Window")             { Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Window", "MOVE") }          
+            submenu.add_item("Delete Window")           { Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Window", "DELETE") }   
 			submenu.add_separator()
 			cmd = UI::Command.new(("Insert Door")) {
-				doortool = HouseBuilder::DoorTool.new(wall)
+				doortool = DoorTool.new(wall)
 				if doortool.show_dialog()
 					Sketchup.active_model.select_tool doortool
 				end
 			}
             submenu.add_item(cmd)
-            submenu.add_item("Change Door Properties"){ Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "CHANGE_PROPERTIES") }          
-            submenu.add_item("Move Door")             { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "MOVE") }          
-            submenu.add_item("Delete Door")           { Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "DELETE") }          
+            submenu.add_item("Change Door Properties"){ Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Door", "CHANGE_PROPERTIES") }          
+            submenu.add_item("Move Door")             { Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Door", "MOVE") }          
+            submenu.add_item("Delete Door")           { Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Door", "DELETE") }          
         end
     end
 #-----------------------------------------------------------------------------------------------------
@@ -2075,7 +2075,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 #-----------------------------------------------------------------------------------------------------
 	#House builder toolbar
 	#-----------------------------------------------------------------------------------------
-	hb_tb = UI::Toolbar.new("House builder")
+	hb_tb = UI::Toolbar.new("House Builder")
 
 	# Global settings
 	cmd = UI::Command.new(("Global settings")) {
@@ -2090,7 +2090,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 
 	# Floor tool
 	cmd = UI::Command.new(("Floor tool")) { 
-		Sketchup.active_model.select_tool HouseBuilder::FloorTool.new
+		Sketchup.active_model.select_tool FloorTool.new
 	}
 	cmd.small_icon = "hb_floortool_S.png"
 	cmd.large_icon = "hb_floortool_L.png"
@@ -2099,7 +2099,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 
 	# Wall tool
 	cmd = UI::Command.new(("Wall tool")) {
-		Sketchup.active_model.select_tool HouseBuilder::WallTool.new
+		Sketchup.active_model.select_tool WallTool.new
 	}
 	cmd.small_icon = "hb_walltool_S.png"
 	cmd.large_icon = "hb_walltool_L.png"
@@ -2108,7 +2108,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 
 	# Gable Wall tool
 	cmd = UI::Command.new(("Gable Wall tool")) {
-		Sketchup.active_model.select_tool HouseBuilder::GableWallTool.new
+		Sketchup.active_model.select_tool GableWallTool.new
 	}
 	cmd.small_icon = "hb_gablewalltool_S.png"
 	cmd.large_icon = "hb_gablewalltool_L.png"
@@ -2117,7 +2117,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 
 	# Roof tool
 	cmd = UI::Command.new(("Roof tool")) {
-		Sketchup.active_model.select_tool HouseBuilder::RoofTool.new
+		Sketchup.active_model.select_tool RoofTool.new
 	}
 	cmd.small_icon = "hb_rooftool_S.png"
 	cmd.large_icon = "hb_rooftool_L.png"
@@ -2129,7 +2129,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Change Wall properties
 	cmd = UI::Command.new(("Edit Wall")) {
 		if (check_for_wall_selection)
-			HouseBuilder::EditWallTool.show_prop_dialog 
+			EditWallTool.show_prop_dialog 
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2149,7 +2149,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Move Wall
 	cmd = UI::Command.new(("Move Wall")) {
 		if (check_for_wall_selection)
-			HouseBuilder::EditWallTool.move
+			EditWallTool.move
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2172,7 +2172,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Insert window
 	cmd = UI::Command.new(("Insert window")) {
 		if wall = (check_for_wall_selection)
-			windowtool = HouseBuilder::WindowTool.new(wall)
+			windowtool = WindowTool.new(wall)
 			if windowtool.show_dialog()
 				Sketchup.active_model.select_tool windowtool
 			end
@@ -2195,7 +2195,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Change window properties
 	cmd = UI::Command.new(("Change window properties in a wall")) {
 		if wall = (check_for_wall_selection)
-			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "CHANGE_PROPERTIES")
+			Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Window", "CHANGE_PROPERTIES")
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2215,7 +2215,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Move window
 	cmd = UI::Command.new(("Move window in a wall")) {
 		if wall = (check_for_wall_selection)
-			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "MOVE")
+			Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Window", "MOVE")
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2235,7 +2235,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Delete window
 	cmd = UI::Command.new(("Delete window in a wall")) {
 		if wall = (check_for_wall_selection)
-			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Window", "DELETE")
+			Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Window", "DELETE")
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2257,7 +2257,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Insert door
 	cmd = UI::Command.new(("Insert door")) {
 		if wall = (check_for_wall_selection)
-			doortool = HouseBuilder::DoorTool.new(wall)
+			doortool = DoorTool.new(wall)
 			if doortool.show_dialog()
 				Sketchup.active_model.select_tool doortool
 			end
@@ -2280,7 +2280,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Change door properties
 	cmd = UI::Command.new(("Change door properties in a wall")) {
 		if wall = (check_for_wall_selection)
-			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "CHANGE_PROPERTIES")
+			Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Door", "CHANGE_PROPERTIES")
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2300,7 +2300,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Move door
 	cmd = UI::Command.new(("Move door in a wall")) {
 		if wall = (check_for_wall_selection)
-			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "MOVE")
+			Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Door", "MOVE")
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2320,7 +2320,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	# Move door
 	cmd = UI::Command.new(("Delete door in a wall")) {
 		if wall = (check_for_wall_selection)
-			Sketchup.active_model.select_tool HouseBuilder::EditOpeningTool.new(wall, "Door", "DELETE")
+			Sketchup.active_model.select_tool EditOpeningTool.new(wall, "Door", "DELETE")
 		else
 			UI.messagebox "No selection or selection isn't a wall."
 		end
@@ -2369,5 +2369,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 
 	# End of load
 end
+
+end # module MM_HouseBuilder
 
 file_loaded("HouseBuilder/HouseBuilderTool.rb")
