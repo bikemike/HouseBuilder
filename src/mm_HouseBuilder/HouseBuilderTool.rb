@@ -12,8 +12,9 @@
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 require 'sketchup.rb'
-require 'mm_HouseBuilder/HouseBuilderDefaults.rb'
-require 'mm_HouseBuilder/HouseBuilder.rb'
+
+Sketchup::require 'mm_HouseBuilder/HouseBuilderDefaults'
+Sketchup::require 'mm_HouseBuilder/HouseBuilder'
 
 module MM_HouseBuilder
 
@@ -1641,388 +1642,393 @@ end # class FloorTool
 # --------  E S T I M A T E  ------------------------------------------------
 
 def self.hb_estimate
-  model=Sketchup.active_model
-  view=model.active_view
-  ents=model.entities
-  $walls_array = []
-  $skins_array = []
-  $floors_array = []
-  $gables_array = []
-  $roofs_array = []
-  
-  # Output file
-  file_name = Sketchup.active_model.title + "_walls.txt"
-  export_file = File.new( file_name , "w" )
-  # Search and sort groups
-  ents.each do |e|
-    if e.typename == "Group" and e.attribute_dictionary "einfo"
-      attrs = (e.attribute_dictionary "einfo").size
-	  type = e.get_attribute('einfo','type')
-      case type
-        when 'wall' 
-			if (e.get_attribute('einfo','name') =~ /_skin/)
-				$skins_array.push e
-			else
-				$walls_array.push e
-			end
-        when 'floor' 
-          $floors_array.push e
-        when 'GableWall' 
-			if (e.get_attribute('einfo','name') =~ /_skin/)
-				$skins_array.push e
-			else
-				$gables_array.push e
-			end
-        when 'roof'
-          $roofs_array.push e
-        #else
-			#puts "Unknown HouseBuilder object type."
-      end
-    end
-  end
+	model=Sketchup.active_model
+	view=model.active_view
+	ents=model.entities
+	walls_array = []
+	skins_array = []
+	floors_array = []
+	gables_array = []
+	roofs_array = []
 
-  export_file.puts "Walls: " + $walls_array.length.to_s
-  export_file.puts "Gabbles: " + $gables_array.length.to_s
-  export_file.puts "Floors: " + $floors_array.length.to_s
-  export_file.puts "Skins: " + $skins_array.length.to_s
-  export_file.puts "Roofs: " + $roofs_array.length.to_s
-  
-  # Rect walls
-  export_file.puts "_____________________________"
-  export_file.puts " RECTANGULAR WALLS"
-  export_file.puts "_____________________________"
-  export_file.puts ""
-  
-  $walls_array.each do |w|
-    ad = w.attribute_dictionary "einfo"
-    #Compute stud length ratio per ^2
-    slr = (stud_length_ratio ad)
-    # Check for doors and windows
-    objects = ad["object_names"]
-    # Related skin group
-    skin_group = find_skin_group( ad["name"] )
-    
-    # Output
-    export_file.puts "Wall ID:\t\t\t" + ad["name"]
-    export_file.puts "Lumber section:\t\t" + ad["style"]
-    export_file.puts "Start point:\t\t" + ad["origin"].to_s
-    export_file.puts "End point:\t\t" + ad["endpt"].to_s
-    export_file.puts "Length:\t\t\t" + ad["length"].to_s + ", " + ad["justify"] + " justified"
-    export_file.puts "Height:\t\t\t" + ad["height"].to_s
-    export_file.puts "Width:\t\t\t" + ad["width"].to_s
-    export_file.puts "Bottom plates:\t\t" + ad["bottom_plate_count"].to_s
-    export_file.puts "Top plates:\t\t" + ad["top_plate_count"].to_s
-    export_file.puts "Stud spacing:\t\t" + ad["stud_spacing"].to_s
-    export_file.puts "Stud height:\t\t" + (rect_walls_stud_height ad).to_s
-    export_file.puts "Total plates length:\t\t" + ((ad["bottom_plate_count"]*ad["length"]) + (ad["top_plate_count"]*ad["length"])).to_s
-    export_file.puts "Total studs length:\t\t" + (rect_walls_total_stud_length ad).to_s
-    #export_file.puts "Objects:\t" + objects.gsub("|"," ")
-    if skin_group
-      export_file.puts "Siding surface:\t\t" + skin_area(skin_group).to_s + "^2"
-      else
-      export_file.puts "No siding skin found for " + ad["name"]
-    end
-    export_file.puts "_____________________________"
-  end
-  
-  # Gabble walls
-  export_file.puts " GABLE WALLS"
-  export_file.puts "_____________________________"
-  export_file.puts ""
-    
-  $gables_array.each do |w|
-    ad = w.attribute_dictionary "einfo"
-    #puts ad.keys
-    # Compute stud length ratio per ^2
-    slr = (stud_length_ratio ad)
-    # top plate length
-    tpl = (gable_top_plate_length ad["length"], ad["pitch"])
-    # Check for doors and windows
-    objects = ad["object_names"]
-    # Related skin group
-    skin_group = find_skin_group( ad["name"] )
-    
-    # Output
-    export_file.puts "Wall ID:\t\t\t" + ad["name"]
-    export_file.puts "Lumber section:\t\t" + ad["style"]
-    export_file.puts "Start point:\t\t" + ad["origin"].to_s
-    export_file.puts "End point:\t\t" + ad["endpt"].to_s
-    export_file.puts "Length:\t\t\t" + ad["length"].to_s + ", " + ad["justify"] + " justified"
-    export_file.puts "Height:\t\t\t" + ad["height"].to_s
-    export_file.puts "Width:\t\t\t" + ad["width"].to_s
-    export_file.puts "Type:\t\t\t" + ad["roof_type"]
-    export_file.puts "Roof slope:\t\t" + ad["pitch"].to_s + "°"
-    export_file.puts "Bottom plate:\t\t" + ad["bottom_plate_count"].to_s
-    export_file.puts "Top plate:\t\t" + ad["top_plate_count"].to_s
-    export_file.puts "Stud spacing:\t\t" + ad["stud_spacing"].to_s
-    export_file.puts "Top plates length:\t\t" + (ad["top_plate_count"]*tpl).to_s
-    export_file.puts "Bot. plates length:\t\t" + (ad["bottom_plate_count"]*ad["length"].to_l).to_s
-    export_file.puts "Total studs length:\t\t" + (gables_total_stud_length ad).to_s
-    #export_file.puts "Objects:\t" + objects.gsub("|"," ")
-    if skin_group
-      export_file.puts "Siding surface:\t\t" + skin_area(skin_group).to_s + "^2"
-      else
-      export_file.puts "No siding skin found for " + ad["name"]
-    end
-    export_file.puts "_____________________________"
-  end
-  
-  # Floors
-  export_file.puts " FLOORS"
-  export_file.puts "_____________________________"
-  export_file.puts ""
-  
-  $floors_array.each do |f|
-    ad = f.attribute_dictionary "einfo"
-    #puts ad.keys
-    # Compute surface
-    surf = (floor_surface ad)
-    # Compute total joists length
-    joists_length = (floor_total_joist_length ad)
-    # Output
-    export_file.puts "Floor ID:\t\t\t" + ad["name"]
-    export_file.puts "Joist section:\t\t" + ad["style"]
-    export_file.puts "Joist spacing:\t\t" + ad["joist_spacing"].to_s
-    export_file.puts "Total joists length:\t\t" + joists_length.to_s
-    export_file.puts "Surface:\t\t\t" + surf.to_s + " ^2"
-    export_file.puts "_____________________________"
+	# Output file
+	file_name = ""
+	if Sketchup.active_model.title != ""
+		file_name = Sketchup.active_model.title + "_"
+	end
+	file_name = file_name + "estimates.txt"
 
-  end
-  
-  # Roofs
-  export_file.puts " ROOFS"
-  export_file.puts "_____________________________"
-  export_file.puts ""
-  
-  $roofs_array.each do |r|
-    ad = r.attribute_dictionary "einfo"
-    # Compute projected base surface
-    base_surf = (roof_base_proj_surface ad)
-    # Compute projected total surface
-    tot_surf = (roof_tot_proj_surface ad)
-    # Compute real total surface
-    real_surf = (roof_real_surface ad)
-    # Compute joists length
-    joists_length = (roof_total_joist_length ad)
-    
-    # Output
-    export_file.puts "Roof ID:\t\t\t" + ad["name"]
-    export_file.puts "Roof type:\t\t" + ad["roof_style"]
-    export_file.puts "Slope:\t\t\t" + ad["pitch"].to_s + "°"
-    export_file.puts "Framing:\t\t\t" + ad["framing"]
-    export_file.puts "Joist spacing:\t\t" + ad["joist_spacing"].to_s
-    export_file.puts "Overhang:\t\t" + ad["overhang"].to_s
-    export_file.puts "Rake overhang:\t\t" + ad["rake_overhang"].to_s
-    export_file.puts "Base proj. surface:\t\t" + base_surf.to_s + "^2"
-    export_file.puts "Total proj. surface:\t\t" + tot_surf.to_s + "^2"
-    export_file.puts "Total surface:\t\t" + real_surf.to_s + "^2"
-    export_file.puts "Ridge and banks:\t\t" + joists_length[0].to_s
-    export_file.puts "Total joists length:\t\t" + joists_length[1].to_s
-  end
-    
-export_file.close
-UI.openURL(file_name)
+	export_file = File.new( file_name , "w" )
+	# Search and sort groups
+	ents.each do |e|
+		if e.typename == "Group" and e.attribute_dictionary "einfo"
+			attrs = (e.attribute_dictionary "einfo").size
+			type = e.get_attribute('einfo','type')
+			case type
+			when 'wall' 
+				if (e.get_attribute('einfo','name') =~ /_skin/)
+					skins_array.push e
+				else
+					walls_array.push e
+				end
+			when 'floor' 
+				floors_array.push e
+			when 'GableWall' 
+				if (e.get_attribute('einfo','name') =~ /_skin/)
+					skins_array.push e
+				else
+					gables_array.push e
+				end
+			when 'roof'
+				roofs_array.push e
+				#else
+				#puts "Unknown HouseBuilder object type."
+			end
+		end
+	end
+
+	export_file.puts "Walls: " + walls_array.length.to_s
+	export_file.puts "Gabbles: " + gables_array.length.to_s
+	export_file.puts "Floors: " + floors_array.length.to_s
+	export_file.puts "Skins: " + skins_array.length.to_s
+	export_file.puts "Roofs: " + roofs_array.length.to_s
+
+	# Rect walls
+	export_file.puts "_____________________________"
+	export_file.puts " RECTANGULAR WALLS"
+	export_file.puts "_____________________________"
+	export_file.puts ""
+
+	walls_array.each do |w|
+		ad = w.attribute_dictionary "einfo"
+		#Compute stud length ratio per ^2
+		slr = (stud_length_ratio ad)
+		# Check for doors and windows
+		objects = ad["object_names"]
+		# Related skin group
+		skin_group = find_skin_group( ad["name"] )
+
+		# Output
+		export_file.puts "Wall ID:\t\t\t" + ad["name"]
+		export_file.puts "Lumber section:\t\t" + ad["style"]
+		export_file.puts "Start point:\t\t" + ad["origin"].to_s
+		export_file.puts "End point:\t\t" + ad["endpt"].to_s
+		export_file.puts "Length:\t\t\t" + ad["length"].to_s + ", " + ad["justify"] + " justified"
+		export_file.puts "Height:\t\t\t" + ad["height"].to_s
+		export_file.puts "Width:\t\t\t" + ad["width"].to_s
+		export_file.puts "Bottom plates:\t\t" + ad["bottom_plate_count"].to_s
+		export_file.puts "Top plates:\t\t" + ad["top_plate_count"].to_s
+		export_file.puts "Stud spacing:\t\t" + ad["stud_spacing"].to_s
+		export_file.puts "Stud height:\t\t" + (rect_walls_stud_height ad).to_s
+		export_file.puts "Total plates length:\t\t" + ((ad["bottom_plate_count"]*ad["length"]) + (ad["top_plate_count"]*ad["length"])).to_s
+		export_file.puts "Total studs length:\t\t" + (rect_walls_total_stud_length ad).to_s
+		#export_file.puts "Objects:\t" + objects.gsub("|"," ")
+		if skin_group
+			export_file.puts "Siding surface:\t\t" + skin_area(skin_group).to_s + "^2"
+		else
+			export_file.puts "No siding skin found for " + ad["name"]
+		end
+		export_file.puts "_____________________________"
+	end
+
+	# Gabble walls
+	export_file.puts " GABLE WALLS"
+	export_file.puts "_____________________________"
+	export_file.puts ""
+
+	gables_array.each do |w|
+		ad = w.attribute_dictionary "einfo"
+		#puts ad.keys
+		# Compute stud length ratio per ^2
+		slr = (stud_length_ratio ad)
+		# top plate length
+		tpl = (gable_top_plate_length ad["length"], ad["pitch"])
+		# Check for doors and windows
+		objects = ad["object_names"]
+		# Related skin group
+		skin_group = find_skin_group( ad["name"] )
+
+		# Output
+		export_file.puts "Wall ID:\t\t\t" + ad["name"]
+		export_file.puts "Lumber section:\t\t" + ad["style"]
+		export_file.puts "Start point:\t\t" + ad["origin"].to_s
+		export_file.puts "End point:\t\t" + ad["endpt"].to_s
+		export_file.puts "Length:\t\t\t" + ad["length"].to_s + ", " + ad["justify"] + " justified"
+		export_file.puts "Height:\t\t\t" + ad["height"].to_s
+		export_file.puts "Width:\t\t\t" + ad["width"].to_s
+		export_file.puts "Type:\t\t\t" + ad["roof_type"]
+		export_file.puts "Roof slope:\t\t" + ad["pitch"].to_s + "°"
+		export_file.puts "Bottom plate:\t\t" + ad["bottom_plate_count"].to_s
+		export_file.puts "Top plate:\t\t" + ad["top_plate_count"].to_s
+		export_file.puts "Stud spacing:\t\t" + ad["stud_spacing"].to_s
+		export_file.puts "Top plates length:\t\t" + (ad["top_plate_count"]*tpl).to_s
+		export_file.puts "Bot. plates length:\t\t" + (ad["bottom_plate_count"]*ad["length"].to_l).to_s
+		export_file.puts "Total studs length:\t\t" + (gables_total_stud_length ad).to_s
+		#export_file.puts "Objects:\t" + objects.gsub("|"," ")
+		if skin_group
+			export_file.puts "Siding surface:\t\t" + skin_area(skin_group).to_s + "^2"
+		else
+			export_file.puts "No siding skin found for " + ad["name"]
+		end
+		export_file.puts "_____________________________"
+	end
+
+	# Floors
+	export_file.puts " FLOORS"
+	export_file.puts "_____________________________"
+	export_file.puts ""
+
+	floors_array.each do |f|
+		ad = f.attribute_dictionary "einfo"
+		#puts ad.keys
+		# Compute surface
+		surf = (floor_surface ad)
+		# Compute total joists length
+		joists_length = (floor_total_joist_length ad)
+		# Output
+		export_file.puts "Floor ID:\t\t\t" + ad["name"]
+		export_file.puts "Joist section:\t\t" + ad["style"]
+		export_file.puts "Joist spacing:\t\t" + ad["joist_spacing"].to_s
+		export_file.puts "Total joists length:\t\t" + joists_length.to_s
+		export_file.puts "Surface:\t\t\t" + surf.to_s + " ^2"
+		export_file.puts "_____________________________"
+
+	end
+
+	# Roofs
+	export_file.puts " ROOFS"
+	export_file.puts "_____________________________"
+	export_file.puts ""
+
+	roofs_array.each do |r|
+		ad = r.attribute_dictionary "einfo"
+		# Compute projected base surface
+		base_surf = (roof_base_proj_surface ad)
+		# Compute projected total surface
+		tot_surf = (roof_tot_proj_surface ad)
+		# Compute real total surface
+		real_surf = (roof_real_surface ad)
+		# Compute joists length
+		joists_length = (roof_total_joist_length ad)
+
+		# Output
+		export_file.puts "Roof ID:\t\t\t" + ad["name"]
+		export_file.puts "Roof type:\t\t" + ad["roof_style"]
+		export_file.puts "Slope:\t\t\t" + ad["pitch"].to_s + "°"
+		export_file.puts "Framing:\t\t\t" + ad["framing"]
+		export_file.puts "Joist spacing:\t\t" + ad["joist_spacing"].to_s
+		export_file.puts "Overhang:\t\t" + ad["overhang"].to_s
+		export_file.puts "Rake overhang:\t\t" + ad["rake_overhang"].to_s
+		export_file.puts "Base proj. surface:\t\t" + base_surf.to_s + "^2"
+		export_file.puts "Total proj. surface:\t\t" + tot_surf.to_s + "^2"
+		export_file.puts "Total surface:\t\t" + real_surf.to_s + "^2"
+		export_file.puts "Ridge and banks:\t\t" + joists_length[0].to_s
+		export_file.puts "Total joists length:\t\t" + joists_length[1].to_s
+	end
+
+	export_file.close
+	UI.openURL(file_name)
 end
 
 #------------------------------ Skin related
 def self.find_skin_group( wall )
-skin_group = wall + "_skin"
-res_group = nil
-Sketchup.active_model.entities.each do |e|
-  if (e.kind_of?(Sketchup::Group))
-    n = e.get_attribute('einfo', 'name')
-    if (n && (n == skin_group))
-      res_group = e
-      break
-    end
-  end
-end
-return res_group
+	skin_group = wall + "_skin"
+	res_group = nil
+	Sketchup.active_model.entities.each do |e|
+		if (e.kind_of?(Sketchup::Group))
+			n = e.get_attribute('einfo', 'name')
+			if (n && (n == skin_group))
+				res_group = e
+				break
+			end
+		end
+	end
+	return res_group
 end
 
 def self.skin_area ( skin_group )
-ents = skin_group.entities
-surfs = []
-ents.each do |e|
-  if (e.kind_of?(Sketchup::Face))
-    surfs.push e.area
-  end
-end
-return surfs.sort.reverse[0]/1550.0031000062
+	ents = skin_group.entities
+	surfs = []
+	ents.each do |e|
+		if (e.kind_of?(Sketchup::Face))
+			surfs.push e.area
+		end
+	end
+	return surfs.sort.reverse[0]/1550.0031000062
 end
 #------------------------------ Floor related
 def self.floor_surface( d )
-  wid = d["corner1"].distance d["corner2"]
-  len = d["corner1"].distance d["corner4"]
-  srf = (len*wid) / 1550.0031000062
-  #puts srf.to_s
-  return srf
+	wid = d["corner1"].distance d["corner2"]
+	len = d["corner1"].distance d["corner4"]
+	srf = (len*wid) / 1550.0031000062
+	#puts srf.to_s
+	return srf
 end
 
 def self.floor_total_joist_length( d )
-spacing = d["joist_spacing"]
-joist_length = d["corner1"].distance d["corner2"]
-floor_length = d["corner1"].distance d["corner4"]
-#puts "JL: " + joist_length.to_s
-#puts "FL: " + floor_length.to_s
-n_joists = (floor_length / spacing).ceil + 1
-#puts n_joists.to_s
-return (n_joists*joist_length).to_l.ceil
+	spacing = d["joist_spacing"]
+	joist_length = d["corner1"].distance d["corner2"]
+	floor_length = d["corner1"].distance d["corner4"]
+	#puts "JL: " + joist_length.to_s
+	#puts "FL: " + floor_length.to_s
+	n_joists = (floor_length / spacing).ceil + 1
+	#puts n_joists.to_s
+	return (n_joists*joist_length).to_l.ceil
 end
 
 #------------------------------ Wall related
 def self.stud_length_ratio( d )
-  spacing = d["stud_spacing"].to_l
-  ratio = (((d["length"].to_l / spacing)+1) / d["length"].to_l)
-  #puts ratio.to_s
+	spacing = d["stud_spacing"].to_l
+	ratio = (((d["length"].to_l / spacing)+1) / d["length"].to_l)
+	#puts ratio.to_s
 end
 
 def self.rect_walls_stud_height( d )
-  interval = d["stud_spacing"]
-  total_height = d["height"].to_l
-  thick = d["style"].split("x")[0].to_f
-  stud_thick = thick / 10.0
-  return total_height - (d["bottom_plate_count"]*stud_thick) - (d["top_plate_count"]*stud_thick)
+	interval = d["stud_spacing"]
+	total_height = d["height"].to_l
+	thick = d["style"].split("x")[0].to_f
+	stud_thick = thick / 10.0
+	return total_height - (d["bottom_plate_count"]*stud_thick) - (d["top_plate_count"]*stud_thick)
 end
 
 def self.gable_walls_average_stud_height( d )
-  type = d["roof_type"]
-  interval = d["stud_spacing"]
-  low_height = d["height"].to_l
-  ang = d["pitch"].degrees
-  thick = d["style"].split("x")[0].to_f
-  stud_thick = thick / 10.0
-  wl = d["length"].to_l
-  
-  case type
-    when "gable"
-      high_height = low_height + ((wl/2.0)*Math.tan(ang))
-      #puts "HH gable" + high_height.to_s
-    when "shed"
-      high_height = low_height + (wl*Math.tan(ang))
-      #puts "HH shed " + high_height.to_s
-  end
-  ret = (((high_height + low_height)/2.0) - (d["bottom_plate_count"]*stud_thick) - (d["top_plate_count"]*stud_thick))
-  #puts "average H " + ret.to_s
-  return ret
-  
+	type = d["roof_type"]
+	interval = d["stud_spacing"]
+	low_height = d["height"].to_l
+	ang = d["pitch"].degrees
+	thick = d["style"].split("x")[0].to_f
+	stud_thick = thick / 10.0
+	wl = d["length"].to_l
+
+	case type
+	when "gable"
+		high_height = low_height + ((wl/2.0)*Math.tan(ang))
+		#puts "HH gable" + high_height.to_s
+	when "shed"
+		high_height = low_height + (wl*Math.tan(ang))
+		#puts "HH shed " + high_height.to_s
+	end
+	ret = (((high_height + low_height)/2.0) - (d["bottom_plate_count"]*stud_thick) - (d["top_plate_count"]*stud_thick))
+	#puts "average H " + ret.to_s
+	return ret
+
 end
 
 def self.rect_walls_total_stud_length( d )
-sh = rect_walls_stud_height( d )
-wl = d["length"].to_l
-spacing = d["stud_spacing"].to_l
-n_studs = (wl / spacing).ceil + 1
-return n_studs*sh
+	sh = rect_walls_stud_height( d )
+	wl = d["length"].to_l
+	spacing = d["stud_spacing"].to_l
+	n_studs = (wl / spacing).ceil + 1
+	return n_studs*sh
 end
 #------------------------------ Gable related
 def self.gables_total_stud_length( d )
-sh = gable_walls_average_stud_height( d )
-spacing = d["stud_spacing"]
-wl = d["length"]
-n_studs = (wl / spacing).ceil + 1
-#puts n_studs.to_s
-return n_studs*sh
+	sh = gable_walls_average_stud_height( d )
+	spacing = d["stud_spacing"]
+	wl = d["length"]
+	n_studs = (wl / spacing).ceil + 1
+	#puts n_studs.to_s
+	return n_studs*sh
 end
 
 def self.gable_top_plate_length( w_length, pitch )
-ang = pitch.degrees
-#puts ang.to_s
-#puts w_length.class
-return w_length.to_l / Math.cos(ang).abs
+	ang = pitch.degrees
+	#puts ang.to_s
+	#puts w_length.class
+	return w_length.to_l / Math.cos(ang).abs
 end
 
 #------------------------------ Roof related
 def self.roof_base_proj_surface( d )
-  wid = d["corner1"].distance d["corner2"]
-  len = d["corner1"].distance d["corner4"]
-  srf = (len*wid) / 1550.0031000062
-  return srf
+	wid = d["corner1"].distance d["corner2"]
+	len = d["corner1"].distance d["corner4"]
+	srf = (len*wid) / 1550.0031000062
+	return srf
 end
 
 def self.roof_tot_proj_surface( d )
-  wid = d["corner1"].distance d["corner2"]
-  len = d["corner1"].distance d["corner4"]
-  over1 = d["overhang"]
-  over2 = d["rake_overhang"]
-  tot_wid = wid + (2*over1)
-  tot_len = len + (2*over2)
-  srf = (tot_len*tot_wid) / 1550.0031000062
-  return srf
+	wid = d["corner1"].distance d["corner2"]
+	len = d["corner1"].distance d["corner4"]
+	over1 = d["overhang"]
+	over2 = d["rake_overhang"]
+	tot_wid = wid + (2*over1)
+	tot_len = len + (2*over2)
+	srf = (tot_len*tot_wid) / 1550.0031000062
+	return srf
 end
 
 def self.roof_real_surface( d )
-  ang = d["pitch"].degrees
-  wid = d["corner1"].distance d["corner2"]
-  len = d["corner1"].distance d["corner4"]
-  over1 = d["overhang"]
-  over2 = d["rake_overhang"]
-  tot_wid = (wid + (2*over1)) / Math.cos(ang).abs
-  tot_len = len + (2*over2)
-  srf = (tot_len*tot_wid) / 1550.0031000062
-  return srf
+	ang = d["pitch"].degrees
+	wid = d["corner1"].distance d["corner2"]
+	len = d["corner1"].distance d["corner4"]
+	over1 = d["overhang"]
+	over2 = d["rake_overhang"]
+	tot_wid = (wid + (2*over1)) / Math.cos(ang).abs
+	tot_len = len + (2*over2)
+	srf = (tot_len*tot_wid) / 1550.0031000062
+	return srf
 end
 
 def self.roof_total_joist_length( d )
-  ang = d["pitch"].degrees
-  spacing = d["joist_spacing"]
-  wid = d["corner1"].distance d["corner2"]
-  len = d["corner1"].distance d["corner4"]
-  over1 = d["overhang"]
-  over2 = d["rake_overhang"]
-  tot_wid = (wid + (2*over1)) / Math.cos(ang).abs
-  tot_len = len + (2*over2)
-  n_joists = (tot_len / spacing).ceil + 2
-  #puts "NJ " + n_joists.to_s
-  #puts "TW " + tot_wid.to_cm.to_s
-  return [(tot_len*3).to_l, (tot_wid*n_joists).to_l] 
+	ang = d["pitch"].degrees
+	spacing = d["joist_spacing"]
+	wid = d["corner1"].distance d["corner2"]
+	len = d["corner1"].distance d["corner4"]
+	over1 = d["overhang"]
+	over2 = d["rake_overhang"]
+	tot_wid = (wid + (2*over1)) / Math.cos(ang).abs
+	tot_len = len + (2*over2)
+	n_joists = (tot_len / spacing).ceil + 2
+	#puts "NJ " + n_joists.to_s
+	#puts "TW " + tot_wid.to_cm.to_s
+	return [(tot_len*3).to_l, (tot_wid*n_joists).to_l] 
 end
 
 
 #------------------------------ Label HB objects
 def self.hb_tag_objects
-model=Sketchup.active_model
-view=model.active_view
-ents=model.entities
-hb_array = []
-ss = model.selection
-ss.clear
-# Erase previous tags if any
-tag_layer = model.layers.add("HB_tags")
-if tag_layer
-  ents.each do |e|
-  if e.layer.name == "HB_tags"
-    ss.add e
-  end
-  end
-  ss.each do |e|
-    e.erase!
-  end
-end
-# Set HB_tag layer current
-old_layer = model.active_layer
-model.active_layer = "HB_tags"
-# Search HB groups
-  ents.each do |e|
-    if e.typename == "Group" and e.attribute_dictionary "einfo"
-      hb_array.push e
-    end
-  end
-# Put a text label from bounding box center with object ID
-hb_array.each do |w|
-  ad = w.attribute_dictionary "einfo"
-  id = ad["name"]
-  center = w.bounds.center
-  if id
-    if id["_skin"]
-      Sketchup.active_model.entities.add_text id, center, Geom::Vector3d.new(50.cm,-50.cm,50.cm)
-    else
-      Sketchup.active_model.entities.add_text id, center, Geom::Vector3d.new(-50.cm,-50.cm,50.cm)
-    end
-  end
-end
-# Restore previous layer
-model.active_layer = old_layer
+	model=Sketchup.active_model
+	view=model.active_view
+	ents=model.entities
+	hb_array = []
+	ss = model.selection
+	ss.clear
+	# Erase previous tags if any
+	tag_layer = model.layers.add("HB_tags")
+	if tag_layer
+		ents.each do |e|
+			if e.layer.name == "HB_tags"
+				ss.add e
+			end
+		end
+		ss.each do |e|
+			e.erase!
+		end
+	end
+	# Set HB_tag layer current
+	old_layer = model.active_layer
+	model.active_layer = "HB_tags"
+	# Search HB groups
+	ents.each do |e|
+		if e.typename == "Group" and e.attribute_dictionary "einfo"
+			hb_array.push e
+		end
+	end
+	# Put a text label from bounding box center with object ID
+	hb_array.each do |w|
+		ad = w.attribute_dictionary "einfo"
+		id = ad["name"]
+		center = w.bounds.center
+		if id
+			if id["_skin"]
+				Sketchup.active_model.entities.add_text id, center, Geom::Vector3d.new(50.cm,-50.cm,50.cm)
+			else
+				Sketchup.active_model.entities.add_text id, center, Geom::Vector3d.new(-50.cm,-50.cm,50.cm)
+			end
+		end
+	end
+	# Restore previous layer
+	model.active_layer = old_layer
 end
 
 
@@ -2077,12 +2083,14 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	#-----------------------------------------------------------------------------------------
 	hb_tb = UI::Toolbar.new("House Builder")
 
+	icon_path = File.join Sketchup.find_support_file("Plugins"), "mm_HouseBuilder"
+
 	# Global settings
 	cmd = UI::Command.new(("Global settings")) {
 		display_global_options_dialog
 	}
-	cmd.small_icon = "hb_globalsettings_S.png"
-	cmd.large_icon = "hb_globalsettings_L.png"
+	cmd.small_icon = File.join icon_path, "hb_globalsettings_S.png"
+	cmd.large_icon = File.join icon_path, "hb_globalsettings_L.png"
 	cmd.tooltip = "Change global settings"
 	hb_tb.add_item(cmd)
 
@@ -2092,8 +2100,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd = UI::Command.new(("Floor tool")) { 
 		Sketchup.active_model.select_tool FloorTool.new
 	}
-	cmd.small_icon = "hb_floortool_S.png"
-	cmd.large_icon = "hb_floortool_L.png"
+	cmd.small_icon = File.join icon_path, "hb_floortool_S.png"
+	cmd.large_icon = File.join icon_path, "hb_floortool_L.png"
 	cmd.tooltip = "Creates a floor."
 	hb_tb.add_item(cmd)
 
@@ -2101,8 +2109,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd = UI::Command.new(("Wall tool")) {
 		Sketchup.active_model.select_tool WallTool.new
 	}
-	cmd.small_icon = "hb_walltool_S.png"
-	cmd.large_icon = "hb_walltool_L.png"
+	cmd.small_icon = File.join icon_path, "hb_walltool_S.png"
+	cmd.large_icon = File.join icon_path, "hb_walltool_L.png"
 	cmd.tooltip = "Creates a wall."
 	hb_tb.add_item(cmd)
 
@@ -2110,8 +2118,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd = UI::Command.new(("Gable Wall tool")) {
 		Sketchup.active_model.select_tool GableWallTool.new
 	}
-	cmd.small_icon = "hb_gablewalltool_S.png"
-	cmd.large_icon = "hb_gablewalltool_L.png"
+	cmd.small_icon = File.join icon_path, "hb_gablewalltool_S.png"
+	cmd.large_icon = File.join icon_path, "hb_gablewalltool_L.png"
 	cmd.tooltip = "Creates a gable wall."
 	hb_tb.add_item(cmd)
 
@@ -2119,8 +2127,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd = UI::Command.new(("Roof tool")) {
 		Sketchup.active_model.select_tool RoofTool.new
 	}
-	cmd.small_icon = "hb_rooftool_S.png"
-	cmd.large_icon = "hb_rooftool_L.png"
+	cmd.small_icon = File.join icon_path, "hb_rooftool_S.png"
+	cmd.large_icon = File.join icon_path, "hb_rooftool_L.png"
 	cmd.tooltip = "Creates a roof."
 	hb_tb.add_item(cmd)
 
@@ -2141,8 +2149,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_changewallproperties_S.png"
-	cmd.large_icon = "hb_changewallproperties_L.png"
+	cmd.small_icon = File.join icon_path, "hb_changewallproperties_S.png"
+	cmd.large_icon = File.join icon_path, "hb_changewallproperties_L.png"
 	cmd.tooltip = "Change Wall properties."
 	hb_tb.add_item(cmd)
 
@@ -2161,8 +2169,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_movewall_S.png"
-	cmd.large_icon = "hb_movewall_L.png"
+	cmd.small_icon = File.join icon_path, "hb_movewall_S.png"
+	cmd.large_icon = File.join icon_path, "hb_movewall_L.png"
 	cmd.tooltip = "Move, rotate or extent Wall."
 	hb_tb.add_item(cmd)
 
@@ -2187,8 +2195,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_addwindow_S.png"
-	cmd.large_icon = "hb_addwindow_L.png"
+	cmd.small_icon = File.join icon_path, "hb_addwindow_S.png"
+	cmd.large_icon = File.join icon_path, "hb_addwindow_L.png"
 	cmd.tooltip = "Insert a window into a wall"
 	hb_tb.add_item(cmd)
 
@@ -2207,8 +2215,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_changewindowproperties_S.png"
-	cmd.large_icon = "hb_changewindowproperties_L.png"
+	cmd.small_icon = File.join icon_path, "hb_changewindowproperties_S.png"
+	cmd.large_icon = File.join icon_path, "hb_changewindowproperties_L.png"
 	cmd.tooltip = "Change window properties in a wall"
 	hb_tb.add_item(cmd)
 
@@ -2227,8 +2235,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_movewindow_S.png"
-	cmd.large_icon = "hb_movewindow_L.png"
+	cmd.small_icon = File.join icon_path, "hb_movewindow_S.png"
+	cmd.large_icon = File.join icon_path, "hb_movewindow_L.png"
 	cmd.tooltip = "Move window in a wall"
 	hb_tb.add_item(cmd)
 
@@ -2247,8 +2255,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_deletewindow_S.png"
-	cmd.large_icon = "hb_deletewindow_L.png"
+	cmd.small_icon = File.join icon_path, "hb_deletewindow_S.png"
+	cmd.large_icon = File.join icon_path, "hb_deletewindow_L.png"
 	cmd.tooltip = "Delete window in a wall"
 	hb_tb.add_item(cmd)
 
@@ -2272,8 +2280,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_adddoor_S.png"
-	cmd.large_icon = "hb_adddoor_L.png"
+	cmd.small_icon = File.join icon_path, "hb_adddoor_S.png"
+	cmd.large_icon = File.join icon_path, "hb_adddoor_L.png"
 	cmd.tooltip = "Insert a door into a wall"
 	hb_tb.add_item(cmd)
 
@@ -2292,8 +2300,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_changedoorproperties_S.png"
-	cmd.large_icon = "hb_changedoorproperties_L.png"
+	cmd.small_icon = File.join icon_path, "hb_changedoorproperties_S.png"
+	cmd.large_icon = File.join icon_path, "hb_changedoorproperties_L.png"
 	cmd.tooltip = "Change door properties in a wall"
 	hb_tb.add_item(cmd)
 
@@ -2312,8 +2320,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_movedoor_S.png"
-	cmd.large_icon = "hb_movedoor_L.png"
+	cmd.small_icon = File.join icon_path, "hb_movedoor_S.png"
+	cmd.large_icon = File.join icon_path, "hb_movedoor_L.png"
 	cmd.tooltip = "Move door in a wall"
 	hb_tb.add_item(cmd)
 
@@ -2332,8 +2340,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 			MF_GRAYED
 		end
 	}
-	cmd.small_icon = "hb_deletedoor_S.png"
-	cmd.large_icon = "hb_deletedoor_L.png"
+	cmd.small_icon = File.join icon_path, "hb_deletedoor_S.png"
+	cmd.large_icon = File.join icon_path, "hb_deletedoor_L.png"
 	cmd.tooltip = "Delete door in a wall"
 	hb_tb.add_item(cmd)
 
@@ -2343,8 +2351,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd = UI::Command.new(("Tag HB objects")) {
 		hb_tag_objects
 	}
-	cmd.small_icon = "hb_tag_S.png"
-	cmd.large_icon = "hb_tag_L.png"
+	cmd.small_icon = File.join icon_path, "hb_tag_S.png"
+	cmd.large_icon = File.join icon_path, "hb_tag_L.png"
 	cmd.tooltip = "Tag all HouseBuilder objects"
 	hb_tb.add_item(cmd)
 
@@ -2352,8 +2360,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd = UI::Command.new(("Estimates")) {
 		hb_estimate
 	}
-	cmd.small_icon = "hb_estimate_S.png"
-	cmd.large_icon = "hb_estimate_L.png"
+	cmd.small_icon = File.join icon_path, "hb_estimate_S.png"
+	cmd.large_icon = File.join icon_path, "hb_estimate_L.png"
 	cmd.tooltip = "Estimates"
 	hb_tb.add_item(cmd)
 
@@ -2361,8 +2369,8 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 
 	# Credits
 	cmd = UI::Command.new(("About...")) {(hb_credits)}
-	cmd.small_icon = "hb_credits_S.png"
-	cmd.large_icon = "hb_credits_L.png"
+	cmd.small_icon = File.join icon_path, "hb_credits_S.png"
+	cmd.large_icon = File.join icon_path, "hb_credits_L.png"
 	cmd.tooltip = "Credits"
 	hb_tb.add_item(cmd)
 

@@ -15,7 +15,7 @@
 # Some bugfixes (in particular to doors) by tim Rowledge Mar 2010
 
 require 'sketchup.rb'
-require 'mm_HouseBuilder/HouseBuilderDefaults.rb'
+Sketchup::require 'mm_HouseBuilder/HouseBuilderDefaults'
 
 module MM_HouseBuilder
 
@@ -27,12 +27,12 @@ def self.hb_credits
 	credits = ""
 	#credits += House_Builder_Extension.name + " " + House_Builder_Extension.version + "\n"
 	#credits += "Copyright (C) " + House_Builder_Extension.copyright + "\n"
-	credits += @@mm_HouseBuilderExtension.description + "\n\n"
+	credits += MM_HouseBuilderExtensionLoader.getExtension().description + "\n\n"
 	credits += "Mike Morrison - 2014\nBug fixes, merge of metric and imperial versions, and other updates.\n\n"
 	credits += "Tim Rowledge - 2010\nBug fixes (in particular to doors).\n\n"
 	credits += "D. Bur - 2007\nToolbar, metric version, estimates, tags.\n\n"
 	credits += "Steve Hurlbut - 2005\nOriginal program."
-	UI.messagebox(credits, MB_MULTILINE, @@mm_HouseBuilderExtension.name + " " + @@mm_HouseBuilderExtension.version)
+	UI.messagebox(credits, MB_MULTILINE, MM_HouseBuilderExtensionLoader.getExtension().name + " " + MM_HouseBuilderExtensionLoader.getExtension().version)
 end
 
 def self.check_for_wall_selection
@@ -549,7 +549,7 @@ def profile_from_style
         end
     elsif (style =~ /^(TJI\d+)\s*x\s*(\d+)$/)
         model = $1
-        height = Lumber.size_from_nominal($model, $2, is_metric())
+        height = Lumber.size_from_nominal(model, $2, is_metric())
         profile_points = ibeam_profile_from_style(model, height)
     elsif (style == "custom")
         profile_points = profile
