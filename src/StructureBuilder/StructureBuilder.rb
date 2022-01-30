@@ -22,11 +22,25 @@ module StructureBuilder
 # set to true for debug output to console
 VERBOSE = false
 
+# Reload extension by running this method from the Ruby Console:
+# StructureBuilder.reload
+def self.reload
+original_verbose = $VERBOSE
+$VERBOSE = nil
+pattern = File.join(__dir__, '**/*.rb')
+Dir.glob(pattern).each { |file|
+    # Cannot use `Sketchup.load` because its an alias for `Sketchup.require`.
+    load file
+}.size
+ensure
+$VERBOSE = original_verbose
+end
+
 
 def self.sb_credits
 	credits = ""
 	credits += StructureBuilderExtensionLoader.getExtension().description + "\n\n"
-	credits += "Kent Kruckeberg - 2022\nAdd ability to model post-frame structures, Bug fixes.\n\n"
+	credits += "Kent Kruckeberg - 2022\nAdded ability to model post-frame structures, Bug fixes.\n\n"
     credits += "Mike Morrison - 2014\nBug fixes, merge of metric and imperial versions, and other updates.\n\n"
 	credits += "Tim Rowledge - 2010\nBug fixes (in particular to doors).\n\n"
 	credits += "D. Bur - 2007\nToolbar, metric version, estimates, tags.\n\n"
