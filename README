@@ -1,14 +1,13 @@
-A SketchUp extension for framing a building.
+A SketchUp extension for modeling structures (houses, sheds, post-frame buildings).
 
+This project is an enhancement to the 'HouseBuilder' SketchUp plugin (https://sketchucation.com/forums/viewtopic.php?f=323&t=61712), to allow modeling post-frame buildings along with some bug fixes.
 
-Future work:
+To use (1-time):
+-Download the contents of the 'src' folder.
+-Zip the downloaded folder/files
+-Rename the zipped folder/files file that ends with "zip" to "rbz"
+-In SketchUp, choose the extension manager, navigate to the .rbz file you created, and select it.
+-In SketchUp's view menu, choose 'Toolbars', and select 'Structure Builder' to tell SketchUp to display the toolbar.
 
-Save Settings:
- Sketchup.read_default "mysection", "variable", "default"
- Sketchup.write_default "mysection", "variable", "value"
-
-
-2) skin thickness and perhaps a settable offset value so skin on adjoining wall/floor/ceiling/roof join on edges correctly...
-3) skin and rim joists on floor (ability to select rim joints as lumber and joists as engineered for example)
-4) openings in floor (create floor/ceiling framing with openings for stairs, AC vents, etc)
-5) openings in roof (skylights, hatches)
+To use (each time):
+-From the 'Structure Builder' toolbar, or the 'Structure Builder' menu found under the Draw menu, choose the various functions that allow you to model building structures.

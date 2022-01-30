@@ -1,7 +1,7 @@
-# Copyright (C) 2014 Mike Morrison
+# Copyright (C) 2022 Kent Kruckeberg
 # See LICENSE file for details.
 
-# Copyright 2005 Steve Hurlbut, D. Bur
+# Copyright 2014 Mike Morrison
 # Copyright 2005 Steve Hurlbut
 
 # Permission to use, copy, modify, and distribute this software for 
@@ -15,24 +15,23 @@
 # Some bugfixes (in particular to doors) by tim Rowledge Mar 2010
 
 require 'sketchup.rb'
-Sketchup::require 'mm_HouseBuilder/HouseBuilderDefaults'
+Sketchup::require 'StructureBuilder/StructureBuilderDefaults'
 
-module MM_HouseBuilder
+module StructureBuilder
 
 # set to true for debug output to console
 VERBOSE = false
 
 
-def self.hb_credits
+def self.sb_credits
 	credits = ""
-	#credits += House_Builder_Extension.name + " " + House_Builder_Extension.version + "\n"
-	#credits += "Copyright (C) " + House_Builder_Extension.copyright + "\n"
-	credits += MM_HouseBuilderExtensionLoader.getExtension().description + "\n\n"
-	credits += "Mike Morrison - 2014\nBug fixes, merge of metric and imperial versions, and other updates.\n\n"
+	credits += StructureBuilderExtensionLoader.getExtension().description + "\n\n"
+	credits += "Kent Kruckeberg - 2022\nAdd ability to model post-frame structures, Bug fixes.\n\n"
+    credits += "Mike Morrison - 2014\nBug fixes, merge of metric and imperial versions, and other updates.\n\n"
 	credits += "Tim Rowledge - 2010\nBug fixes (in particular to doors).\n\n"
 	credits += "D. Bur - 2007\nToolbar, metric version, estimates, tags.\n\n"
 	credits += "Steve Hurlbut - 2005\nOriginal program."
-	UI.messagebox(credits, MB_MULTILINE, MM_HouseBuilderExtensionLoader.getExtension().name + " " + MM_HouseBuilderExtensionLoader.getExtension().version)
+	UI.messagebox(credits, MB_MULTILINE, StructureBuilderExtensionLoader.getExtension().name + " " + StructureBuilderExtensionLoader.getExtension().version)
 end
 
 def self.check_for_wall_selection
@@ -41,61 +40,61 @@ return wall
 end
 
 # This is an example of an observer that watches the options provider.
-class HouseBuilderOptionsProviderObserver < Sketchup::OptionsProviderObserver
+class StructureBuilderOptionsProviderObserver < Sketchup::OptionsProviderObserver
 	# UnitsOptions, LengthUnit
 	def onOptionsProviderChanged(provider, name)
 		if (name.to_s == "LengthUnit")
 			unit_type = provider["LengthUnit"]
-			MM_HouseBuilder.hb_update_config(unit_type)
+			StructureBuilder.sb_update_config(unit_type)
 		end
 	end
 end
 
 # This is an example of an observer that watches the application for
 # new models and shows a messagebox.
-class HouseBuilderAppObserver < Sketchup::AppObserver
+class StructureBuilderAppObserver < Sketchup::AppObserver
 	def onNewModel(model)
 		options_provider = Sketchup.active_model.options["UnitsOptions"]
-		options_provider.add_observer(HouseBuilderOptionsProviderObserver.new)
+		options_provider.add_observer(StructureBuilderOptionsProviderObserver.new)
 	end
 	def onOpenModel
 		options_provider = Sketchup.active_model.options["UnitsOptions"]
-		options_provider.add_observer(HouseBuilderOptionsProviderObserver.new)
+		options_provider.add_observer(StructureBuilderOptionsProviderObserver.new)
 	end
 end
 
-def self.hb_update_config(unit_type)
+def self.sb_update_config(unit_type)
 	case unit_type
 	when 0..1
 		new_units = "imperial"
 	else
 		new_units = "metric"
 	end
-	if (@house_builder_units != new_units)
-		@house_builder_units  = new_units
+	if (@structure_builder_units != new_units)
+		@structure_builder_units  = new_units
 	end
 end
 
-def self.hb_init_config
+def self.sb_init_config
 	# Attach the observer
-	Sketchup.add_observer(HouseBuilderAppObserver.new)
+	Sketchup.add_observer(StructureBuilderAppObserver.new)
 
 	options_provider = Sketchup.active_model.options["UnitsOptions"]
-	options_provider.add_observer(HouseBuilderOptionsProviderObserver.new)
+	options_provider.add_observer(StructureBuilderOptionsProviderObserver.new)
 
 	unit_type = options_provider["LengthUnit"]
-	hb_update_config(unit_type)
+	sb_update_config(unit_type)
 end
 
-@house_builder_units  = "imperial"
+@structure_builder_units  = "imperial"
 
 def self.units
-	return @house_builder_units
+	return @structure_builder_units
 end
 
 # Run
-if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
-	hb_init_config
+if (not file_loaded?("StructureBuilder/StructureBuilderTool.rb"))
+	sb_init_config
 end
 
 
@@ -110,36 +109,36 @@ class BaseBuilder
 
 # global defaults that can be modified by caller
 GLOBAL_OPTIONS_METRIC = {
-	'header_style' => HBDEFAULTS['metric']['global']['header_style'],
-	'pitch' => HBDEFAULTS['metric']['global']['pitch'],
-	'on_center_spacing' => HBDEFAULTS['metric']['global']['on_center_spacing'], 
-	'wall.style' => HBDEFAULTS['metric']['wall']['style'],
-	'wall.justify' => HBDEFAULTS['metric']['wall']['justify'],
-	'wall.height' => HBDEFAULTS['metric']['wall']['height'],
-	'wall.stud_spacing' => HBDEFAULTS['metric']['wall']['stud_spacing'],
-	'window.header_height' => HBDEFAULTS['metric']['window']['header_height'],
-	'window.justify' => HBDEFAULTS['metric']['window']['justify'],
-	'door.header_height' => HBDEFAULTS['metric']['door']['header_height'],
-	'door.justify' => HBDEFAULTS['metric']['door']['justify'],
-	'floor.joist_spacing' => HBDEFAULTS['metric']['floor']['joist_spacing'],
-	'roof.joist_spacing' => HBDEFAULTS['metric']['roof']['joist_spacing'],
+	'header_style' => SBDEFAULTS['metric']['global']['header_style'],
+	'pitch' => SBDEFAULTS['metric']['global']['pitch'],
+	'on_center_spacing' => SBDEFAULTS['metric']['global']['on_center_spacing'], 
+	'wall.style' => SBDEFAULTS['metric']['wall']['style'],
+	'wall.justify' => SBDEFAULTS['metric']['wall']['justify'],
+	'wall.height' => SBDEFAULTS['metric']['wall']['height'],
+	'wall.stud_spacing' => SBDEFAULTS['metric']['wall']['stud_spacing'],
+	'window.header_height' => SBDEFAULTS['metric']['window']['header_height'],
+	'window.justify' => SBDEFAULTS['metric']['window']['justify'],
+	'door.header_height' => SBDEFAULTS['metric']['door']['header_height'],
+	'door.justify' => SBDEFAULTS['metric']['door']['justify'],
+	'floor.joist_spacing' => SBDEFAULTS['metric']['floor']['joist_spacing'],
+	'roof.joist_spacing' => SBDEFAULTS['metric']['roof']['joist_spacing'],
 	'layer' => nil,
 } if not defined?(GLOBAL_OPTIONS_METRIC)
 
 GLOBAL_OPTIONS_IMPERIAL = {
-	'header_style' => HBDEFAULTS['imperial']['global']['header_style'],
-	'pitch' => HBDEFAULTS['imperial']['global']['pitch'],
-	'on_center_spacing' => HBDEFAULTS['imperial']['global']['on_center_spacing'], 
-	'wall.style' => HBDEFAULTS['imperial']['wall']['style'],
-	'wall.justify' => HBDEFAULTS['imperial']['wall']['justify'],
-	'wall.height' => HBDEFAULTS['imperial']['wall']['height'],
-	'wall.stud_spacing' => HBDEFAULTS['imperial']['wall']['stud_spacing'],
-	'window.header_height' => HBDEFAULTS['imperial']['window']['header_height'],
-	'window.justify' => HBDEFAULTS['imperial']['window']['justify'],
-	'door.header_height' => HBDEFAULTS['imperial']['door']['header_height'],
-	'door.justify' => HBDEFAULTS['imperial']['door']['justify'],
-	'floor.joist_spacing' => HBDEFAULTS['imperial']['floor']['joist_spacing'],
-	'roof.joist_spacing' => HBDEFAULTS['imperial']['roof']['joist_spacing'],
+	'header_style' => SBDEFAULTS['imperial']['global']['header_style'],
+	'pitch' => SBDEFAULTS['imperial']['global']['pitch'],
+	'on_center_spacing' => SBDEFAULTS['imperial']['global']['on_center_spacing'], 
+	'wall.style' => SBDEFAULTS['imperial']['wall']['style'],
+	'wall.justify' => SBDEFAULTS['imperial']['wall']['justify'],
+	'wall.height' => SBDEFAULTS['imperial']['wall']['height'],
+	'wall.stud_spacing' => SBDEFAULTS['imperial']['wall']['stud_spacing'],
+	'window.header_height' => SBDEFAULTS['imperial']['window']['header_height'],
+	'window.justify' => SBDEFAULTS['imperial']['window']['justify'],
+	'door.header_height' => SBDEFAULTS['imperial']['door']['header_height'],
+	'door.justify' => SBDEFAULTS['imperial']['door']['justify'],
+	'floor.joist_spacing' => SBDEFAULTS['imperial']['floor']['joist_spacing'],
+	'roof.joist_spacing' => SBDEFAULTS['imperial']['roof']['joist_spacing'],
 	'layer' => nil,
 } if not defined?(GLOBAL_OPTIONS_IMPERIAL)
 
@@ -179,7 +178,7 @@ def is_imperial
 end
 
 def self.is_metric
-	return (MM_HouseBuilder.units == "metric")
+	return (StructureBuilder.units == "metric")
 end
 
 def parameter_changed(name)
@@ -372,7 +371,7 @@ JOIST_DATA_METRIC = {
 def initialize(options = {})
 	super()
 	default_options = {
-		'style' => HBDEFAULTS[MM_HouseBuilder.units]['global']['style'],
+		'style' => SBDEFAULTS[StructureBuilder.units]['global']['style'],
 		'origin' => Geom::Point3d.new,
 		'orientation' => TOP,
 		'rotation' => 0,
@@ -744,20 +743,20 @@ def initialize(options = {})
 	super()
 	default_options = {
 		'type' => 'wall',
-		'style' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['style'],
+		'style' => SBDEFAULTS[StructureBuilder.units]['wall']['style'],
 		'name' => '',
 		'width' => 0, # computed below
-		'height' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['height'],
+		'height' => SBDEFAULTS[StructureBuilder.units]['wall']['height'],
 		'length' => 0,
-		'stud_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['stud_spacing'],
-		'on_center_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['global']['on_center_spacing'],
+		'stud_spacing' => SBDEFAULTS[StructureBuilder.units]['wall']['stud_spacing'],
+		'on_center_spacing' => SBDEFAULTS[StructureBuilder.units]['global']['on_center_spacing'],
 		'origin' => Geom::Point3d.new,
 		'endpt' => Geom::Point3d.new,
 		'angle' => 0,
 		'bottom_plate_count' => 1,
 		'top_plate_count' => 2,
 		'first_stud_offset' => 0,
-		'justify' => HBDEFAULTS[MM_HouseBuilder.units]['wall']['justify'],
+		'justify' => SBDEFAULTS[StructureBuilder.units]['wall']['justify'],
 		'layer' => nil,
 		'object_names' => ''
 	}
@@ -855,7 +854,7 @@ def draw
 	pt.z = height
 	for i in 1..top_plate_count
 		case self.class.to_s
-		when "MM_HouseBuilder::GableWall"
+		when "StructureBuilder::GableWall"
 			pt.z -= @top_plate_z
 			entities.push(build_top_plate(pt))
 			@stud_height -= @top_plate_z
@@ -1108,7 +1107,7 @@ def initialize(options = {})
 		'bottom_plate_count' => 1,
 		'top_plate_count' => 1,
 		'first_stud_offset' => 0,
-		'pitch' => HBDEFAULTS[MM_HouseBuilder.units]['global']['pitch'],
+		'pitch' => SBDEFAULTS[StructureBuilder.units]['global']['pitch'],
 		'roof_type' => GABLE_ROOF,
 		'layer' => nil,
 	}
@@ -1424,14 +1423,14 @@ class Window < Opening
 def initialize(wall, options = {})
 	super()
 	default_options = { 
-		'header_height' => HBDEFAULTS[MM_HouseBuilder.units]['window']['header_height'],
+		'header_height' => SBDEFAULTS[StructureBuilder.units]['window']['header_height'],
 		'name' => '',
 		'type' => 'window',
 		'center_offset' => 0,
-		'width' => HBDEFAULTS[MM_HouseBuilder.units]['window']['width'],
-		'height' => HBDEFAULTS[MM_HouseBuilder.units]['window']['height'],
-		'header_style' => HBDEFAULTS[MM_HouseBuilder.units]['global']['header_style'],
-		'sill_style' => HBDEFAULTS[MM_HouseBuilder.units]['window']['sill_style'],
+		'width' => SBDEFAULTS[StructureBuilder.units]['window']['width'],
+		'height' => SBDEFAULTS[StructureBuilder.units]['window']['height'],
+		'header_style' => SBDEFAULTS[StructureBuilder.units]['global']['header_style'],
+		'sill_style' => SBDEFAULTS[StructureBuilder.units]['window']['sill_style'],
 		'justify' => 'left',
 		'rough_opening' => 0,
 		'layer' => nil,
@@ -1574,15 +1573,15 @@ class Door < Opening
 def initialize(wall, options = {})
 	super()
 	default_options = { 
-		'header_height' => HBDEFAULTS[MM_HouseBuilder.units]['door']['header_height'],
+		'header_height' => SBDEFAULTS[StructureBuilder.units]['door']['header_height'],
 		'name' => '',
 		'type' => 'door',
 		'center_offset' => 0,
-		'width' => HBDEFAULTS[MM_HouseBuilder.units]['door']['width'],
-		'height' => HBDEFAULTS[MM_HouseBuilder.units]['door']['height'],
-		'header_style' => HBDEFAULTS[MM_HouseBuilder.units]['global']['header_style'],
+		'width' => SBDEFAULTS[StructureBuilder.units]['door']['width'],
+		'height' => SBDEFAULTS[StructureBuilder.units]['door']['height'],
+		'header_style' => SBDEFAULTS[StructureBuilder.units]['global']['header_style'],
 		'justify' => 'left',
-		'rough_opening' => HBDEFAULTS[MM_HouseBuilder.units]['door']['rough_opening'],
+		'rough_opening' => SBDEFAULTS[StructureBuilder.units]['door']['rough_opening'],
 		'layer' => nil,
 	}
 	apply_global_options(default_options)
@@ -1741,10 +1740,10 @@ def initialize(wall, options = {})
 	default_options = {
 		'name' => '',
 		'type' => 'roof',
-		'joist_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['joist_spacing'],
-		'on_center_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['global']['on_center_spacing'],
-		'style' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['style'],
-		'ridge_style' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['ridge_style'],
+		'joist_spacing' => SBDEFAULTS[StructureBuilder.units]['roof']['joist_spacing'],
+		'on_center_spacing' => SBDEFAULTS[StructureBuilder.units]['global']['on_center_spacing'],
+		'style' => SBDEFAULTS[StructureBuilder.units]['roof']['style'],
+		'ridge_style' => SBDEFAULTS[StructureBuilder.units]['roof']['ridge_style'],
 		'roof_style' => GABLE_ROOF,
 		'framing' => COMMON_RAFTER,
 		'joist_type' => nil,
@@ -1752,10 +1751,10 @@ def initialize(wall, options = {})
 		'corner2' => [0, 0, 0],
 		'corner3' => [0, 0, 0],
 		'corner4' => [0, 0, 0],
-		'pitch' => HBDEFAULTS[MM_HouseBuilder.units]['global']['pitch'],
-		'overhang' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['overhang'],
-		'rake_overhang' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['rake_overhang'],
-		'shed_ridge_overhang' => HBDEFAULTS[MM_HouseBuilder.units]['roof']['shed_ridge_overhang'],
+		'pitch' => SBDEFAULTS[StructureBuilder.units]['global']['pitch'],
+		'overhang' => SBDEFAULTS[StructureBuilder.units]['roof']['overhang'],
+		'rake_overhang' => SBDEFAULTS[StructureBuilder.units]['roof']['rake_overhang'],
+		'shed_ridge_overhang' => SBDEFAULTS[StructureBuilder.units]['roof']['shed_ridge_overhang'],
 		'layer' => nil,
 	}
 
@@ -2096,9 +2095,9 @@ def initialize(options = {})
 	default_options = {
 		'name' => '',
 		'type' => 'floor',
-		'joist_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['floor']['joist_spacing'],
-		'on_center_spacing' => HBDEFAULTS[MM_HouseBuilder.units]['global']['on_center_spacing'],
-		'style' => HBDEFAULTS[MM_HouseBuilder.units]['floor']['style'],
+		'joist_spacing' => SBDEFAULTS[StructureBuilder.units]['floor']['joist_spacing'],
+		'on_center_spacing' => SBDEFAULTS[StructureBuilder.units]['global']['on_center_spacing'],
+		'style' => SBDEFAULTS[StructureBuilder.units]['floor']['style'],
 		'corner1' => [0, 0, 0],
 		'corner2' => [0, 0, 0],
 		'corner3' => [0, 0, 0],
@@ -2187,8 +2186,8 @@ end
 
 end # class Floor
 
-end # module MM_HouseBuilder
+end # module StructureBuilder
 
 
 #-----------------------------------------------------------------------------
-file_loaded("HouseBuilder/HouseBuilder.rb")
+file_loaded("StructureBuilder/StructureBuilder.rb")

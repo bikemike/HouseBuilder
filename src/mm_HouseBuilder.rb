@@ -1,6 +1,7 @@
-# Copyright (C) 2014 Mike Morrison
+# Copyright (C) 2022 Kent Kruckeberg
 # See LICENSE file for details.
 
+# Copyright 2014 Mike Morrison
 # Copyright 2005 Steve Hurlbut
 
 # Permission to use, copy, modify, and distribute this software for 
@@ -14,23 +15,23 @@
 require 'extensions.rb'
 require 'langhandler.rb'
 
-module MM_HouseBuilderExtensionLoader
+module StructureBuilderExtensionLoader
 
 # Extension Manager
-@@mm_HouseBuilder_uStrings = LanguageHandler.new("House Builder")
-@@mm_HouseBuilderExtension = SketchupExtension.new @@mm_HouseBuilder_uStrings.GetString("House Builder"), "mm_HouseBuilder/HouseBuilderTool"
-@@mm_HouseBuilderExtension .description=@@mm_HouseBuilder_uStrings.GetString("A sketchup extension for creating wood framed buildings.")
-@@mm_HouseBuilderExtension .name= "House Builder"
-@@mm_HouseBuilderExtension .creator = "Steve Hurlbut"
-@@mm_HouseBuilderExtension .copyright = "2014 Mike Morrison, 2005 Steve Hurlbut, D. Bur"
-@@mm_HouseBuilderExtension .version = "1.3"
-Sketchup.register_extension @@mm_HouseBuilderExtension , true
+@@StructureBuilder_uStrings = LanguageHandler.new("Structure Builder")
+@@StructureBuilderExtension = SketchupExtension.new @@StructureBuilder_uStrings.GetString("Structure Builder"), "StructureBuilder/StructureBuilderTool"
+@@StructureBuilderExtension .description=@@StructureBuilder_uStrings.GetString("A sketchup extension for creating wood framed buildings.")
+@@StructureBuilderExtension .name= "Structure Builder"
+@@StructureBuilderExtension .creator = "Steve Hurlbut"
+@@StructureBuilderExtension .copyright = "2022 Kent Kruckeberg, 2014 Mike Morrison, 2005 Steve Hurlbut, D. Bur"
+@@StructureBuilderExtension .version = "1.0"
+Sketchup.register_extension @@StructureBuilderExtension , true
 
 def self.getExtension()
-	return @@mm_HouseBuilderExtension
+	return @@StructureBuilderExtension
 end
 
 
 end
 
-file_loaded("mm_HouseBuilder.rb")
+file_loaded("StructureBuilder.rb")

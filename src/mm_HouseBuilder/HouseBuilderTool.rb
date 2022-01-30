@@ -1,6 +1,7 @@
-# Copyright (C) 2014 Mike Morrison
+# Copyright (C) 2022 Kent Kruckeberg
 # See LICENSE for details.
 
+# Copyright (C) 2014 Mike Morrison
 # Copyright 2005 Steve Hurlbut, D.Bur
 
 # Permission to use, copy, modify, and distribute this software for 
@@ -13,10 +14,10 @@
 
 require 'sketchup.rb'
 
-Sketchup::require 'mm_HouseBuilder/HouseBuilderDefaults'
-Sketchup::require 'mm_HouseBuilder/HouseBuilder'
+Sketchup::require 'StructureBuilder/StructureBuilderDefaults'
+Sketchup::require 'StructureBuilder/StructureBuilder'
 
-module MM_HouseBuilder
+module StructureBuilder
 
 # these are the states that a tool can be in
 STATE_EDIT = 0 if not defined? STATE_EDIT
@@ -66,14 +67,14 @@ end
 def self.display_global_options_dialog()
 	parameters = [
 	    # prompt, attr_name, value, enums
-	    [ "Wall Lumber Size", "wall.style", HBDEFAULTS[MM_HouseBuilder.units]['wall']['lumber_sizes'].join("|") ],
+	    [ "Wall Lumber Size", "wall.style", SBDEFAULTS[StructureBuilder.units]['wall']['lumber_sizes'].join("|") ],
 	    [ "Wall Plate Height", "wall.height", nil ],
 	    [ "Wall Justification  ", "window.justify",  "left|center|right" ],
 	    [ "Wall Stud Spacing", "wall.stud_spacing", nil ],
 	    [ "Roof Joist Spacing", 'roof.joist_spacing', nil ],
 	 	[ "Floor Joist Spacing", 'floor.joist_spacing', nil ],
 		[ "On-Center Spacing", "on_center_spacing", "true|false"],
-	    [ "Header Size", "header_style", HBDEFAULTS[MM_HouseBuilder.units]['global']['header_sizes'].join("|") ],
+	    [ "Header Size", "header_style", SBDEFAULTS[StructureBuilder.units]['global']['header_sizes'].join("|") ],
 	    [ "Door Header Height", "door.header_height", nil ],
 	    [ "Door Justification  ", "door.justify",  "left|center|right" ],
 	    [ "Window Header Height", "window.header_height", nil ],
@@ -181,7 +182,7 @@ def initialize()
 	@properties = [
 		# prompt, attr_name, enums
 		[ "Wall Justification  ", "justify", "left|center|right" ],
-		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['wall']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", SBDEFAULTS[StructureBuilder.units]['wall']['lumber_sizes'].join("|") ],
 		[ "Plate Height", "height", nil ],
 		[ "Stud Spacing", "stud_spacing", nil ],
 		[ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
@@ -189,7 +190,7 @@ def initialize()
 	   ]
 
 	@wall = Wall.new() 
-	results = MM_HouseBuilder.display_dialog("Wall Properties", @wall, @properties)
+	results = StructureBuilder.display_dialog("Wall Properties", @wall, @properties)
 	return false if not results
 end
 
@@ -350,7 +351,7 @@ def draw(view)
     # show the wall base outline
     if (@state == STATE_PICK_NEXT)
 		#puts "wall width3: " + @wall.width.to_s + " " + @wall.width.class.to_s
-        (@offset_pt0, @offset_pt1) = MM_HouseBuilder.draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
+        (@offset_pt0, @offset_pt1) = StructureBuilder.draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
         @drawn = true
     end
 end
@@ -370,7 +371,7 @@ def initialize()
 		[ "Pitch", "pitch", nil ],
 		[ "Roof type", 'roof_type', "gable|shed" ],
 		[ "Wall Justification  ", "justify", "left|center|right" ],
-		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['wall']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", SBDEFAULTS[StructureBuilder.units]['wall']['lumber_sizes'].join("|") ],
 		[ "Plate Height", "height", nil ],
 		[ "Stud Spacing", "stud_spacing", nil ],
 		[ "Bottom Plate Count  ", "bottom_plate_count", "0|1" ],
@@ -378,7 +379,7 @@ def initialize()
 	]
 
 	@wall = GableWall.new() 
-	results = MM_HouseBuilder.display_dialog("Gable Wall Properties", @wall, @properties)
+	results = StructureBuilder.display_dialog("Gable Wall Properties", @wall, @properties)
 	return false if not results
 end
 
@@ -418,7 +419,7 @@ def initialize(wall)
             @skin_group = BaseBuilder.find_named_entity(name + "_skin")
         end
         
-        @wall = MM_HouseBuilder.create_wall_from_drawing(@group)
+        @wall = StructureBuilder.create_wall_from_drawing(@group)
         
         # puts "wall = " + @wall.to_s
         if (not @wall)
@@ -552,10 +553,10 @@ def find_selected_object(x, y, view)
         # puts "obj_start = " + obj_start.inspect
         # puts "obj_end = " + obj_end.inspect
         # puts "obj_start_offset = " + obj_start_offset.inspect
-        if ((point.y > MM_HouseBuilder.min(obj_start.y, obj_end.y)) &&
-            (point.y < MM_HouseBuilder.max(obj_start.y, obj_end.y)) &&
-            (point.x > MM_HouseBuilder.min(obj_start.x, obj_start_offset.x)) &&
-            (point.x < MM_HouseBuilder.max(obj_start.x, obj_start_offset.x)))
+        if ((point.y > StructureBuilder.min(obj_start.y, obj_end.y)) &&
+            (point.y < StructureBuilder.max(obj_start.y, obj_end.y)) &&
+            (point.x > StructureBuilder.min(obj_start.x, obj_start_offset.x)) &&
+            (point.x < StructureBuilder.max(obj_start.x, obj_start_offset.x)))
             # puts "found"
             view.invalidate
             return(obj)
@@ -723,10 +724,10 @@ def self.show_prop_dialog
     tool = EditWallTool.new(nil)
     if (tool.wall.kind_of?(GableWall))
 		gabletool = GableWallTool.new
-        results = MM_HouseBuilder.display_dialog("Gable Wall Properties", tool.wall, gabletool.properties)
+        results = StructureBuilder.display_dialog("Gable Wall Properties", tool.wall, gabletool.properties)
     else
 		walltool = WallTool.new
-        results = MM_HouseBuilder.display_dialog("Wall Properties", tool.wall, walltool.properties)
+        results = StructureBuilder.display_dialog("Wall Properties", tool.wall, walltool.properties)
     end
 	if (results)
 	    tool.changed = true
@@ -754,7 +755,7 @@ def draw(view)
     @corners = [] if not defined?(@corners)
     @corners[0] = @pts[0]
     @corners[1] = @pts[1]
-    (a, b) = MM_HouseBuilder.draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
+    (a, b) = StructureBuilder.draw_outline(view, @pts[0], @pts[1], @wall.width, @wall.justify, "gray")
     # puts "a = " + a.inspect
     @corners[2] = b
     @corners[3] = a
@@ -766,9 +767,9 @@ def draw(view)
         vec.length = obj.width
         obj_end = obj_start + vec
         if (defined?(@selected_obj) && (obj == @selected_obj))
-            MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
+            StructureBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
         else
-            MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
+            StructureBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
         end
     end
     
@@ -824,19 +825,19 @@ def initialize(wall_group)
 		# prompt, attr_name, value, enums
 		[ "Offset Justification  ", "justify", "left|center|right" ],
 		[ "Header Height", "header_height", nil ],
-		[ "Header Size", "header_style", HBDEFAULTS[MM_HouseBuilder.units]['global']['header_sizes'].join("|") ],
-		[ "Sill Size", "sill_style", HBDEFAULTS[MM_HouseBuilder.units]['window']['sill_sizes'].join("|") ],
+		[ "Header Size", "header_style", SBDEFAULTS[StructureBuilder.units]['global']['header_sizes'].join("|") ],
+		[ "Sill Size", "sill_style", SBDEFAULTS[StructureBuilder.units]['window']['sill_sizes'].join("|") ],
 		[ "Width", "width", nil ],
 		[ "Height", "height", nil ],
 	]
 	   
-	@wall = MM_HouseBuilder.create_wall_from_drawing(wall_group)
+	@wall = StructureBuilder.create_wall_from_drawing(wall_group)
 	@obj = Window.new(@wall)
     @objtype = "Wall"
 end
 
 def show_dialog
-	results = MM_HouseBuilder.display_dialog("Window Properties", @obj, @properties)
+	results = StructureBuilder.display_dialog("Window Properties", @obj, @properties)
 	if results
 		reset()
 		return true
@@ -1003,7 +1004,7 @@ def draw(view)
     end 
 
     # draw the outline of the wall
-    MM_HouseBuilder.draw_outline(view, @wall.origin, @wall.endpt, @wall.width, @wall.justify, "gray")
+    StructureBuilder.draw_outline(view, @wall.origin, @wall.endpt, @wall.width, @wall.justify, "gray")
     vec = @end_pt - @start_pt
     # draw the outline of each door and window
     @wall.objects.each do |obj|
@@ -1011,9 +1012,9 @@ def draw(view)
         obj_start = @wall.origin + vec
         vec.length = obj.width
         obj_end = obj_start + vec
-        MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
+        StructureBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
     end
-    MM_HouseBuilder.draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "orange", 2)
+    StructureBuilder.draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "orange", 2)
     @drawn = true
 end
 
@@ -1033,18 +1034,18 @@ def initialize(wall_group)
 		# prompt, attr_name, value, enums
 		[ "Offset Justification  ", "justify", "left|center|right" ],
 		[ "Header Height", "header_height", nil ],
-		[ "Header Size", "header_style", HBDEFAULTS[MM_HouseBuilder.units]['global']['header_sizes'].join("|") ],
+		[ "Header Size", "header_style", SBDEFAULTS[StructureBuilder.units]['global']['header_sizes'].join("|") ],
 		[ "Width", "width", nil ],
 		[ "Height", "height", nil ],
 	]
 
-	@wall = MM_HouseBuilder.create_wall_from_drawing(wall_group)
+	@wall = StructureBuilder.create_wall_from_drawing(wall_group)
 	@obj = Door.new(@wall)
 	@objtype = "Door"
 end
 
 def show_dialog
-	results = MM_HouseBuilder.display_dialog("Door Properties", @obj, @properties)
+	results = StructureBuilder.display_dialog("Door Properties", @obj, @properties)
 	if results
 		reset()
 		return true
@@ -1073,7 +1074,7 @@ attr_accessor :obj, :wall, :operation
 def initialize(wall_group, objtype, operation)
     @operation = operation
 	@objtype = objtype
-	@wall = MM_HouseBuilder.create_wall_from_drawing(wall_group)
+	@wall = StructureBuilder.create_wall_from_drawing(wall_group)
 	@offset = 0
 	@selected_obj = nil
 	@pt_to_move = nil
@@ -1158,10 +1159,10 @@ def find_selected_object(x, y, view)
         # puts "obj_start = " + obj_start.inspect
         # puts "obj_end = " + obj_end.inspect
         # puts "obj_start_offset = " + obj_start_offset.inspect
-        if ((point.y > MM_HouseBuilder.min(obj_start.y, obj_end.y)) &&
-            (point.y < MM_HouseBuilder.max(obj_start.y, obj_end.y)) &&
-            (point.x > MM_HouseBuilder.min(obj_start.x, obj_start_offset.x)) &&
-            (point.x < MM_HouseBuilder.max(obj_start.x, obj_start_offset.x)))
+        if ((point.y > StructureBuilder.min(obj_start.y, obj_end.y)) &&
+            (point.y < StructureBuilder.max(obj_start.y, obj_end.y)) &&
+            (point.x > StructureBuilder.min(obj_start.x, obj_start_offset.x)) &&
+            (point.x < StructureBuilder.max(obj_start.x, obj_start_offset.x)))
             # puts "found"
             view.invalidate
             return(obj)
@@ -1272,10 +1273,10 @@ def show_prop_dialog
     case @objtype
     when "Window"
 		windowtool = WindowTool.new
-        results = MM_HouseBuilder.display_dialog("Window Properties", @selected_obj, windowtool.properties)
+        results = StructureBuilder.display_dialog("Window Properties", @selected_obj, windowtool.properties)
     when "Door"
 		doortool = DoorTool.new
-        results = MM_HouseBuilder.display_dialog("Door Properties", @selected_obj, doortool.properties)
+        results = StructureBuilder.display_dialog("Door Properties", @selected_obj, doortool.properties)
     end
 	if (results)
         draw_obj
@@ -1323,7 +1324,7 @@ def draw(view)
     # draw the outline of the wall
     @corners[0] = @wall.origin
     @corners[1] = @wall.endpt
-    (a, b) = MM_HouseBuilder.draw_outline(view, @corners[0], @corners[1], @wall.width, @wall.justify, "gray")
+    (a, b) = StructureBuilder.draw_outline(view, @corners[0], @corners[1], @wall.width, @wall.justify, "gray")
     # puts "a = " + a.inspect
     @corners[2] = b
     @corners[3] = a
@@ -1336,14 +1337,14 @@ def draw(view)
         obj_end = obj_start + vec
         if (defined?(@selected_obj) && (obj == @selected_obj))
             if (@state != STATE_MOVING)
-                MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
+                StructureBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "red", 3)
             end
         else
-            MM_HouseBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
+            StructureBuilder.draw_outline(view, obj_start, obj_end, @wall.width, @wall.justify, "gray")
         end
     end
     if (@state == STATE_MOVING)
-        MM_HouseBuilder.draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "red", 2)
+        StructureBuilder.draw_outline(view, @start_pt, @end_pt, @wall.width, @wall.justify, "red", 2)
     end
     
     @drawn = true
@@ -1379,7 +1380,7 @@ def initialize()
 	@properties = [
 		# prompt, attr_name, value, enums
 		[ "Type", "roof_style", "gable|shed" ],
-		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['roof']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", SBDEFAULTS[StructureBuilder.units]['roof']['lumber_sizes'].join("|") ],
 		[ "Joist Spacing", "joist_spacing", nil ],
 		[ "Pitch", "pitch", nil ],
 		[ "Overhang", "overhang", nil ],
@@ -1388,7 +1389,7 @@ def initialize()
     @tool_name = "ROOFTOOL"
     wall = Wall.new()
 	@obj = Roof.new(wall) 
-	results = MM_HouseBuilder.display_dialog("Roof Properties", @obj, @properties)
+	results = StructureBuilder.display_dialog("Roof Properties", @obj, @properties)
 	return false if not results
 	reset
 	@type = "roof"
@@ -1623,13 +1624,13 @@ class FloorTool < RoofTool
 def initialize()
 	@properties= [
 		# prompt, attr_name, value, enums
-		[ "Lumber Size", "style", HBDEFAULTS[MM_HouseBuilder.units]['floor']['lumber_sizes'].join("|") ],
+		[ "Lumber Size", "style", SBDEFAULTS[StructureBuilder.units]['floor']['lumber_sizes'].join("|") ],
 		[ "Joist Spacing", "joist_spacing", nil ],
 	]
 
     @tool_name = "FLOORTOOL"
 	@obj = Floor.new() 
-	results = MM_HouseBuilder.display_dialog("Floor Properties", @obj, @properties)
+	results = StructureBuilder.display_dialog("Floor Properties", @obj, @properties)
 	return false if not results
 	reset
 	@type = "floor"
@@ -1641,7 +1642,7 @@ end # class FloorTool
 
 # --------  E S T I M A T E  ------------------------------------------------
 
-def self.hb_estimate
+def self.sb_estimate
 	model=Sketchup.active_model
 	view=model.active_view
 	ents=model.entities
@@ -1682,7 +1683,7 @@ def self.hb_estimate
 			when 'roof'
 				roofs_array.push e
 				#else
-				#puts "Unknown HouseBuilder object type."
+				#puts "Unknown StructureBuilder object type."
 			end
 		end
 	end
@@ -1985,19 +1986,19 @@ def self.roof_total_joist_length( d )
 end
 
 
-#------------------------------ Label HB objects
-def self.hb_tag_objects
+#------------------------------ Label SB objects
+def self.sb_tag_objects
 	model=Sketchup.active_model
 	view=model.active_view
 	ents=model.entities
-	hb_array = []
+	sb_array = []
 	ss = model.selection
 	ss.clear
 	# Erase previous tags if any
-	tag_layer = model.layers.add("HB_tags")
+	tag_layer = model.layers.add("SB_tags")
 	if tag_layer
 		ents.each do |e|
-			if e.layer.name == "HB_tags"
+			if e.layer.name == "SB_tags"
 				ss.add e
 			end
 		end
@@ -2005,17 +2006,17 @@ def self.hb_tag_objects
 			e.erase!
 		end
 	end
-	# Set HB_tag layer current
+	# Set SB_tag layer current
 	old_layer = model.active_layer
-	model.active_layer = "HB_tags"
-	# Search HB groups
+	model.active_layer = "SB_tags"
+	# Search SB groups
 	ents.each do |e|
 		if e.typename == "Group" and e.attribute_dictionary "einfo"
-			hb_array.push e
+			sb_array.push e
 		end
 	end
 	# Put a text label from bounding box center with object ID
-	hb_array.each do |w|
+	sb_array.each do |w|
 		ad = w.attribute_dictionary "einfo"
 		id = ad["name"]
 		center = w.bounds.center
@@ -2034,14 +2035,14 @@ end
 
 #-----------------------------------------------------------------------------
 # Add a menu items
-if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
-    submenu = UI.menu("Draw").add_submenu("House Builder")
+if (not file_loaded?("StructureBuilder/StructureBuilderTool.rb"))
+    submenu = UI.menu("Draw").add_submenu("Structure Builder")
     submenu.add_item("Wall Tool") { Sketchup.active_model.select_tool WallTool.new }    
     submenu.add_item("Gable Wall Tool") { Sketchup.active_model.select_tool GableWallTool.new }
     submenu.add_item("Roof Tool") { Sketchup.active_model.select_tool RoofTool.new }
     submenu.add_item("Floor Tool") { Sketchup.active_model.select_tool FloorTool.new }
     submenu.add_item("Change Global Properties") { display_global_options_dialog }
-    #submenu.add_item("Reload Tools") { load "HouseBuilder.rb"; load "HouseBuilderTool.rb" }
+    #submenu.add_item("Reload Tools") { load "StructureBuilder.rb"; load "StructureBuilderTool.rb" }
     
     # Add a context menu handler to let you edit a Wall
     UI.add_context_menu_handler do |menu|
@@ -2079,11 +2080,11 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 #-----------------------------------------------------------------------------------------------------
 #                                        MENU ITEMS
 #-----------------------------------------------------------------------------------------------------
-	#House builder toolbar
+	#Structure builder toolbar
 	#-----------------------------------------------------------------------------------------
-	hb_tb = UI::Toolbar.new("House Builder")
+	sb_tb = UI::Toolbar.new("Structure Builder")
 
-	icon_path = File.join Sketchup.find_support_file("Plugins"), "mm_HouseBuilder"
+	icon_path = File.join Sketchup.find_support_file("Plugins"), "StructureBuilder"
 
 	# Global settings
 	cmd = UI::Command.new(("Global settings")) {
@@ -2092,9 +2093,9 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_globalsettings_S.png"
 	cmd.large_icon = File.join icon_path, "hb_globalsettings_L.png"
 	cmd.tooltip = "Change global settings"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
-	hb_tb.add_separator()
+	sb_tb.add_separator()
 
 	# Floor tool
 	cmd = UI::Command.new(("Floor tool")) { 
@@ -2103,7 +2104,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_floortool_S.png"
 	cmd.large_icon = File.join icon_path, "hb_floortool_L.png"
 	cmd.tooltip = "Creates a floor."
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Wall tool
 	cmd = UI::Command.new(("Wall tool")) {
@@ -2112,7 +2113,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_walltool_S.png"
 	cmd.large_icon = File.join icon_path, "hb_walltool_L.png"
 	cmd.tooltip = "Creates a wall."
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Gable Wall tool
 	cmd = UI::Command.new(("Gable Wall tool")) {
@@ -2121,7 +2122,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_gablewalltool_S.png"
 	cmd.large_icon = File.join icon_path, "hb_gablewalltool_L.png"
 	cmd.tooltip = "Creates a gable wall."
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Roof tool
 	cmd = UI::Command.new(("Roof tool")) {
@@ -2130,9 +2131,9 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_rooftool_S.png"
 	cmd.large_icon = File.join icon_path, "hb_rooftool_L.png"
 	cmd.tooltip = "Creates a roof."
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
-	hb_tb.add_separator()
+	sb_tb.add_separator()
 
 	# Change Wall properties
 	cmd = UI::Command.new(("Edit Wall")) {
@@ -2152,7 +2153,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_changewallproperties_S.png"
 	cmd.large_icon = File.join icon_path, "hb_changewallproperties_L.png"
 	cmd.tooltip = "Change Wall properties."
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Move Wall
 	cmd = UI::Command.new(("Move Wall")) {
@@ -2172,9 +2173,9 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_movewall_S.png"
 	cmd.large_icon = File.join icon_path, "hb_movewall_L.png"
 	cmd.tooltip = "Move, rotate or extent Wall."
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
-	hb_tb.add_separator()
+	sb_tb.add_separator()
 
 
 	# Insert window
@@ -2198,7 +2199,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_addwindow_S.png"
 	cmd.large_icon = File.join icon_path, "hb_addwindow_L.png"
 	cmd.tooltip = "Insert a window into a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Change window properties
 	cmd = UI::Command.new(("Change window properties in a wall")) {
@@ -2218,7 +2219,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_changewindowproperties_S.png"
 	cmd.large_icon = File.join icon_path, "hb_changewindowproperties_L.png"
 	cmd.tooltip = "Change window properties in a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Move window
 	cmd = UI::Command.new(("Move window in a wall")) {
@@ -2238,7 +2239,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_movewindow_S.png"
 	cmd.large_icon = File.join icon_path, "hb_movewindow_L.png"
 	cmd.tooltip = "Move window in a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Delete window
 	cmd = UI::Command.new(("Delete window in a wall")) {
@@ -2258,9 +2259,9 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_deletewindow_S.png"
 	cmd.large_icon = File.join icon_path, "hb_deletewindow_L.png"
 	cmd.tooltip = "Delete window in a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
-	hb_tb.add_separator()
+	sb_tb.add_separator()
 
 	# Insert door
 	cmd = UI::Command.new(("Insert door")) {
@@ -2283,7 +2284,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_adddoor_S.png"
 	cmd.large_icon = File.join icon_path, "hb_adddoor_L.png"
 	cmd.tooltip = "Insert a door into a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Change door properties
 	cmd = UI::Command.new(("Change door properties in a wall")) {
@@ -2303,7 +2304,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_changedoorproperties_S.png"
 	cmd.large_icon = File.join icon_path, "hb_changedoorproperties_L.png"
 	cmd.tooltip = "Change door properties in a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Move door
 	cmd = UI::Command.new(("Move door in a wall")) {
@@ -2323,7 +2324,7 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_movedoor_S.png"
 	cmd.large_icon = File.join icon_path, "hb_movedoor_L.png"
 	cmd.tooltip = "Move door in a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 	# Move door
 	cmd = UI::Command.new(("Delete door in a wall")) {
@@ -2343,41 +2344,41 @@ if (not file_loaded?("HouseBuilder/HouseBuilderTool.rb"))
 	cmd.small_icon = File.join icon_path, "hb_deletedoor_S.png"
 	cmd.large_icon = File.join icon_path, "hb_deletedoor_L.png"
 	cmd.tooltip = "Delete door in a wall"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
-	hb_tb.add_separator()
+	sb_tb.add_separator()
 
 	# Tag
-	cmd = UI::Command.new(("Tag HB objects")) {
-		hb_tag_objects
+	cmd = UI::Command.new(("Tag SB objects")) {
+		sb_tag_objects
 	}
 	cmd.small_icon = File.join icon_path, "hb_tag_S.png"
 	cmd.large_icon = File.join icon_path, "hb_tag_L.png"
-	cmd.tooltip = "Tag all HouseBuilder objects"
-	hb_tb.add_item(cmd)
+	cmd.tooltip = "Tag all StructureBuilder objects"
+	sb_tb.add_item(cmd)
 
 	# Estimates
 	cmd = UI::Command.new(("Estimates")) {
-		hb_estimate
+		sb_estimate
 	}
 	cmd.small_icon = File.join icon_path, "hb_estimate_S.png"
 	cmd.large_icon = File.join icon_path, "hb_estimate_L.png"
 	cmd.tooltip = "Estimates"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
-	hb_tb.add_separator()
+	sb_tb.add_separator()
 
 	# Credits
-	cmd = UI::Command.new(("About...")) {(hb_credits)}
+	cmd = UI::Command.new(("About...")) {(sb_credits)}
 	cmd.small_icon = File.join icon_path, "hb_credits_S.png"
 	cmd.large_icon = File.join icon_path, "hb_credits_L.png"
 	cmd.tooltip = "Credits"
-	hb_tb.add_item(cmd)
+	sb_tb.add_item(cmd)
 
 
 	# End of load
 end
 
-end # module MM_HouseBuilder
+end # module StructureBuilder
 
-file_loaded("HouseBuilder/HouseBuilderTool.rb")
+file_loaded("StructureBuilder/StructureBuilderTool.rb")

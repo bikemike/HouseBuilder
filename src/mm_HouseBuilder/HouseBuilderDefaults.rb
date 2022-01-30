@@ -1,3 +1,4 @@
+# Copyright (C) 2022 Kent Kruckeberg
 # Copyright (C) 2014 Mike Morrison
 # See LICENSE file for details.
 
@@ -9,9 +10,9 @@
 # IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
-module MM_HouseBuilder
+module StructureBuilder
 
-HBDEFAULTS = 
+SBDEFAULTS = 
 { 
 	"imperial" => 
 	{
